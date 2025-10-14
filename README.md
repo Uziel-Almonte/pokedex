@@ -1,6 +1,6 @@
 # pokedex
 
-a pokedex app
+A pokedex app by Uziel Almonte and Stanley Gomez
 
 ## Getting Started
 
