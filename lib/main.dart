@@ -82,7 +82,17 @@ class _MyHomePageState extends State<MyHomePage> {
         pokemonspecies(where: {id: {_eq: $id}}) {
           id
           name
+          pokemons{
+            pokemontypes{
+              type{
+                 name
+              }
+           }
+           pokemonsprites{
+             sprites
+          }
         }
+      }
       }
     ''';
     // Execute the query using the GraphQL client
@@ -117,14 +127,26 @@ class _MyHomePageState extends State<MyHomePage> {
             if (!snapshot.hasData) {
               return const Text('No Pokémon found.');
             }
+
+
             // Get the Pokémon data from the snapshot
             final pokemon = snapshot.data!;
+
+            // Extract types from the nested structure
+            final pokemons = (pokemon['pokemons'] as List<dynamic>?) ?? [];
+
+            final types = pokemons.isNotEmpty
+                ? (pokemons[0]['pokemontypes'] as List<dynamic>?)
+                ?.map((t) => t['type']?['name'] as String?).whereType<String>().join(', ') ?? 'Unknown'
+                : 'Unknown';
             // Display the Pokémon ID and name
             return Column(
               mainAxisAlignment: MainAxisAlignment.center,
               children: <Widget>[
+                Image.network('https://picsum.photos/250?image=9', height: 100, width: 100),
                 Text('ID: ${pokemon['id']}'), // Show Pokémon ID
                 Text('Name: ${pokemon['name']}'), // Show Pokémon name
+                Text('Types: $types')
               ],
             );
           },
