@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 // Import the GraphQLService singleton
 import 'graphql.dart';
+//fonts de google
+import 'package:google_fonts/google_fonts.dart';
 
 // Main entry point for the app
 void main() async {
@@ -32,10 +34,12 @@ class MyApp extends StatelessWidget {
     return MaterialApp(
       title: 'Pokedex', // Set the app title
       theme: ThemeData(
-        // Set the color scheme for the app
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        // Set the color scheme for the app with Pokémon red theme
+        colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
+        // Set scaffold background to light blue (Pokémon theme)
+        scaffoldBackgroundColor: Colors.blue[50],
       ),
-      home: const MyHomePage(title: 'Gotta Catch \'Em All'), // Set the home page
+      home: const MyHomePage(title: 'Pokedex'), // Set the home page
     );
   }
 }
@@ -102,8 +106,23 @@ class _MyHomePageState extends State<MyHomePage> {
     // Return a Scaffold widget for the page layout
     return Scaffold(
       appBar: AppBar(
-        backgroundColor: Theme.of(context).colorScheme.inversePrimary, // Set app bar color
-        title: Text(widget.title), // Set app bar title
+        backgroundColor: Colors.red, // Set Pokémon red color for app bar background
+        centerTitle: true, // Center the title horizontally in the app bar
+        title: Text(
+          widget.title,
+          style: GoogleFonts.pressStart2p( // Apply Press Start 2P font (retro 8-bit style)
+            fontSize: 20, // Set font size to 20 pixels
+            color: Colors.yellow, // Set text color to yellow (iconic Pokémon color)
+            fontWeight: FontWeight.bold, // Make the text bold for emphasis
+            shadows: [ // Add shadow effects to the text for depth
+              const Shadow(
+                offset: Offset(2, 2), // Move shadow 2 pixels right and 2 pixels down
+                blurRadius: 4, // Blur the shadow edges for a soft effect (4 pixels)
+                color: Colors.blue, // Set shadow color to blue for contrast
+              ),
+            ],
+          ),
+        ), // Set app bar title with Pokémon style
       ),
       body: Center(
         // Use FutureBuilder to fetch and display Pokémon data
@@ -112,11 +131,19 @@ class _MyHomePageState extends State<MyHomePage> {
           builder: (context, snapshot) {
             // Show loading indicator while waiting for data
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const CircularProgressIndicator();
+              return const CircularProgressIndicator(
+                color: Colors.red, // Set loading spinner color to red (Pokémon theme)
+              );
             }
             // Show message if no data is found
             if (!snapshot.hasData) {
-              return const Text('No Pokémon found.');
+              return Text(
+                'No Pokémon found.',
+                style: GoogleFonts.pressStart2p( // Use retro font for error message
+                  fontSize: 14, // Set font size to 14 pixels for readability
+                  color: Colors.red, // Use red color to indicate error/warning
+                ),
+              );
             }
 
 
@@ -132,12 +159,66 @@ class _MyHomePageState extends State<MyHomePage> {
                 : 'Unknown';
             // Display the Pokémon ID and name
             return Column(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisAlignment: MainAxisAlignment.center, // Center all children vertically
               children: <Widget>[
-                Image.network('https://picsum.photos/250?image=9', height: 100, width: 100),
-                Text('ID: ${pokemon['id']}'), // Show Pokémon ID
-                Text('Name: ${pokemon['name']}'), // Show Pokémon name
-                Text('Types: $types')
+                // Container with decoration for the Pokémon image
+                Container(
+                  padding: const EdgeInsets.all(20), // Add 20 pixels of padding inside the container on all sides
+                  decoration: BoxDecoration(
+                    color: Colors.white, // Set container background to white for a clean card look
+                    borderRadius: BorderRadius.circular(20), // Round the corners with 20 pixel radius for modern look
+                    boxShadow: [ // Add shadow effects to the container for depth and elevation
+                      BoxShadow(
+                        color: Colors.grey.withOpacity(0.5), // Use semi-transparent grey (50% opacity) for shadow
+                        spreadRadius: 5, // Spread the shadow 5 pixels outward from the container
+                        blurRadius: 7, // Blur the shadow edges by 7 pixels for soft effect
+                        offset: const Offset(0, 3), // Move shadow 3 pixels down (0 horizontal, 3 vertical)
+                      ),
+                    ],
+                  ),
+                  child: Image.network(
+                    'https://picsum.photos/250?image=9',
+                    height: 150, // Set image height to 150 pixels
+                    width: 150, // Set image width to 150 pixels (square image)
+                  ),
+                ),
+                const SizedBox(height: 30), // Add 30 pixels of vertical spacing between elements
+                // Pokémon ID with styled text
+                Text(
+                  'ID: ${pokemon['id']}',
+                  style: GoogleFonts.pressStart2p( // Use retro 8-bit font style
+                    fontSize: 16, // Set font size to 16 pixels
+                    color: Colors.red, // Use red color to match Pokémon brand
+                    fontWeight: FontWeight.bold, // Make text bold for emphasis and readability
+                  ),
+                ),
+                const SizedBox(height: 10), // Add 10 pixels of vertical spacing
+                // Pokémon name with styled text
+                Text(
+                  pokemon['name'].toString().toUpperCase(), // Convert name to uppercase for impact
+                  style: GoogleFonts.pressStart2p( // Use retro 8-bit font style
+                    fontSize: 24, // Set larger font size (24 pixels) since this is the main title
+                    color: Colors.blue[900], // Use dark blue color (shade 900 is darkest)
+                    fontWeight: FontWeight.bold, // Make text bold for strong emphasis
+                    shadows: [ // Add shadow effects to text for depth and visibility
+                      const Shadow(
+                        offset: Offset(2, 2), // Move shadow 2 pixels right and 2 pixels down
+                        blurRadius: 3, // Blur shadow edges by 3 pixels for subtle effect
+                        color: Colors.yellow, // Use yellow shadow for Pokémon theme contrast
+                      ),
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 10), // Add 10 pixels of vertical spacing
+                // Pokémon types with styled text
+                Text(
+                  'Types: $types',
+                  style: GoogleFonts.roboto( // Use Roboto font (modern, clean sans-serif)
+                    fontSize: 18, // Set font size to 18 pixels for good readability
+                    color: Colors.green[700], // Use medium-dark green (shade 700) for nature/type theme
+                    fontWeight: FontWeight.w600, // Use semi-bold weight (600) for moderate emphasis
+                  ),
+                ),
               ],
             );
           },
@@ -146,8 +227,12 @@ class _MyHomePageState extends State<MyHomePage> {
       // Floating action button to increment the counter
       floatingActionButton: FloatingActionButton(
         onPressed: _incrementCounter, // Call increment function on press
-        tooltip: 'Next Pokémon', // Tooltip for the button
-        child: const Icon(Icons.add), // Plus icon for the button
+        backgroundColor: Colors.red, // Set button background to Pokémon red color
+        tooltip: 'Next Pokémon', // Tooltip text shown when user long-presses button
+        child: const Icon(
+          Icons.arrow_forward, // Use forward arrow icon to indicate "next" action
+          color: Colors.white, // Set icon color to white for contrast against red background
+        ),
       ),
     );
   }
