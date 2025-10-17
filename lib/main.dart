@@ -2,28 +2,19 @@
 import 'package:flutter/material.dart';
 // Import GraphQL Flutter package for GraphQL client and widgets
 import 'package:graphql_flutter/graphql_flutter.dart';
+// Import the GraphQLService singleton
+import 'graphql.dart';
 
 // Main entry point for the app
 void main() async {
   // Ensure Flutter widget binding is initialized before running async code
   WidgetsFlutterBinding.ensureInitialized();
-  // Initialize Hive for persistent cache storage (required by graphql_flutter)
-  await initHiveForFlutter();
-  // Create an HTTP link to the PokeAPI GraphQL endpoint
-  final HttpLink httpLink = HttpLink('https://graphql.pokeapi.co/v1beta2');
-  // Create a ValueNotifier holding the GraphQL client instance
-  final ValueNotifier<GraphQLClient> client = ValueNotifier(
-    GraphQLClient(
-      // Set the HTTP link for the client
-      link: httpLink,
-      // Set up the cache using HiveStore
-      cache: GraphQLCache(store: HiveStore()),
-    ),
-  );
+  // Initialize the GraphQLService singleton
+  await GraphQLService().init();
   // Run the Flutter app, providing the GraphQL client to the widget tree
   runApp(
     GraphQLProvider(
-      client: client, // Pass the client to GraphQLProvider
+      client: ValueNotifier(GraphQLService().client), // Use the singleton client
       child: const MyApp(), // Set MyApp as the root widget
     ),
   );
