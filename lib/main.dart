@@ -378,7 +378,7 @@ class _MyHomePageState extends State<MyHomePage> {
                             ],
                           ),
                           child: Image.network(
-                            'https://picsum.photos/250?image=9',
+                            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon['id']}.png',
                             height: 150, // Set image height to 150 pixels
                             width: 150, // Set image width to 150 pixels (square image)
                           ),
