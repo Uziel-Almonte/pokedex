@@ -124,6 +124,7 @@ class _MyHomePageState extends State<MyHomePage> {
   // Function to fetch Pokémon data from the API by ID
   Future<Map<String, dynamic>?> fetchPokemon(int id, GraphQLClient client) async {
     // Define the GraphQL query to get Pokémon species by ID
+    // Now includes base stats (HP, Attack, Defense, Special Attack, Special Defense, Speed)
     final query = '''
       query GetPokemonById {
         pokemonspecies(where: {id: {_eq: $id}}) {
@@ -137,6 +138,12 @@ class _MyHomePageState extends State<MyHomePage> {
            }
            pokemonsprites{
              sprites
+          }
+          pokemonstats{
+            base_stat
+            stat{
+              name
+            }
           }
         }
       }
@@ -153,6 +160,7 @@ class _MyHomePageState extends State<MyHomePage> {
   // Function to search Pokémon by name using GraphQL
   // Uses case-insensitive matching with ILIKE operator
   // Returns the first matching Pokémon found (limit: 1)
+  // Now includes base stats information
   Future<Map<String, dynamic>?> searchPokemonByName(String name, GraphQLClient client) async {
     // GraphQL query with WHERE clause for name matching
     // _ilike: case-insensitive pattern matching (PostgreSQL operator)
@@ -171,6 +179,12 @@ class _MyHomePageState extends State<MyHomePage> {
            }
            pokemonsprites{
              sprites
+          }
+          pokemonstats{
+            base_stat
+            stat{
+              name
+            }
           }
         }
       }
@@ -308,69 +322,205 @@ class _MyHomePageState extends State<MyHomePage> {
                       ? (pokemons[0]['pokemontypes'] as List<dynamic>?)
                       ?.map((t) => t['type']?['name'] as String?).whereType<String>().join(', ') ?? 'Unknown'
                       : 'Unknown';
+
+                  // EXTRACT BASE STATS FROM GRAPHQL RESPONSE
+                  // Stats include: HP, Attack, Defense, Special Attack, Special Defense, Speed
+                  // The API returns these in a nested structure: pokemons -> pokemonstats -> stat/base_stat
+                  final stats = pokemons.isNotEmpty
+                      ? (pokemons[0]['pokemonstats'] as List<dynamic>?) ?? []
+                      : [];
+
+                  // CREATE A MAP TO ORGANIZE STATS BY NAME
+                  // This map allows us to access stats by their name (e.g., 'hp', 'attack')
+                  // instead of iterating through the list every time we need a specific stat
+                  // Example: statsMap['hp'] = 45, statsMap['attack'] = 60
+                  final Map<String, int> statsMap = {};
+
+                  // CALCULATE TOTAL STATS
+                  // Variable to accumulate the sum of all base stats
+                  // This gives us the overall power level of the Pokémon
+                  // Typical range: 180-780 (Shedinja has lowest, Eternamax has highest)
+                  int totalStats = 0;
+
+                  // LOOP THROUGH ALL STATS AND ORGANIZE THEM
+                  // The API returns stats with structure: {base_stat: 45, stat: {name: "hp"}}
+                  // We extract both the name and value, then store in our map
+                  for (var stat in stats) {
+                    final statName = stat['stat']?['name'] as String?; // Get stat name (e.g., "hp", "attack")
+                    final baseStat = stat['base_stat'] as int?; // Get stat value (e.g., 45, 60)
+
+                    // Only add to map if both name and value exist (null safety)
+                    if (statName != null && baseStat != null) {
+                      statsMap[statName] = baseStat; // Store in map for easy access
+                      totalStats += baseStat; // Add to running total
+                    }
+                  }
+
                   // Display the Pokémon ID and name
-                  return Column(
-                    mainAxisAlignment: MainAxisAlignment.center, // Center all children vertically
-                    children: <Widget>[
-                      // Container with decoration for the Pokémon image
-                      Container(
-                        padding: const EdgeInsets.all(20), // Add 20 pixels of padding inside the container on all sides
-                        decoration: BoxDecoration(
-                          color: Colors.white, // Set container background to white for a clean card look
-                          borderRadius: BorderRadius.circular(20), // Round the corners with 20 pixel radius for modern look
-                          boxShadow: [ // Add shadow effects to the container for depth and elevation
-                            BoxShadow(
-                              color: Colors.grey.withOpacity(0.5), // Use semi-transparent grey (50% opacity) for shadow
-                              spreadRadius: 5, // Spread the shadow 5 pixels outward from the container
-                              blurRadius: 7, // Blur the shadow edges by 7 pixels for soft effect
-                              offset: const Offset(0, 3), // Move shadow 3 pixels down (0 horizontal, 3 vertical)
+                  return SingleChildScrollView(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center, // Center all children vertically
+                      children: <Widget>[
+                        const SizedBox(height: 20), // Add top spacing
+                        // Container with decoration for the Pokémon image
+                        Container(
+                          padding: const EdgeInsets.all(20), // Add 20 pixels of padding inside the container on all sides
+                          decoration: BoxDecoration(
+                            color: Colors.white, // Set container background to white for a clean card look
+                            borderRadius: BorderRadius.circular(20), // Round the corners with 20 pixel radius for modern look
+                            boxShadow: [ // Add shadow effects to the container for depth and elevation
+                              BoxShadow(
+                                color: Colors.grey.withOpacity(0.5), // Use semi-transparent grey (50% opacity) for shadow
+                                spreadRadius: 5, // Spread the shadow 5 pixels outward from the container
+                                blurRadius: 7, // Blur the shadow edges by 7 pixels for soft effect
+                                offset: const Offset(0, 3), // Move shadow 3 pixels down (0 horizontal, 3 vertical)
+                              ),
+                            ],
+                          ),
+                          child: Image.network(
+                            'https://picsum.photos/250?image=9',
+                            height: 150, // Set image height to 150 pixels
+                            width: 150, // Set image width to 150 pixels (square image)
+                          ),
+                        ),
+                        const SizedBox(height: 30), // Add 30 pixels of vertical spacing between elements
+                        // Pokémon ID with styled text
+                        Text(
+                          'ID: ${pokemon['id']}',
+                          style: GoogleFonts.pressStart2p( // Use retro 8-bit font style
+                            fontSize: 16, // Set font size to 16 pixels
+                            color: Colors.red, // Use red color to match Pokémon brand
+                            fontWeight: FontWeight.bold, // Make text bold for emphasis and readability
+                          ),
+                        ),
+                        const SizedBox(height: 10), // Add 10 pixels of vertical spacing
+                        // Pokémon name with styled text
+                        Text(
+                          pokemon['name'].toString().toUpperCase(), // Convert name to uppercase for impact
+                          style: GoogleFonts.pressStart2p( // Use retro 8-bit font style
+                            fontSize: 24, // Set larger font size (24 pixels) since this is the main title
+                            color: Colors.blue[900], // Use dark blue color (shade 900 is darkest)
+                            fontWeight: FontWeight.bold, // Make text bold for strong emphasis
+                            shadows: [ // Add shadow effects to text for depth and visibility
+                              const Shadow(
+                                offset: Offset(2, 2), // Move shadow 2 pixels right and 2 pixels down
+                                blurRadius: 3, // Blur shadow edges by 3 pixels for subtle effect
+                                color: Colors.yellow, // Use yellow shadow for Pokémon theme contrast
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 10), // Add 10 pixels of vertical spacing
+                        // Pokémon types with styled text
+                        Text(
+                          'Types: $types',
+                          style: GoogleFonts.roboto( // Use Roboto font (modern, clean sans-serif)
+                            fontSize: 18, // Set font size to 18 pixels for good readability
+                            color: Colors.green[700], // Use medium-dark green (shade 700) for nature/type theme
+                            fontWeight: FontWeight.w600, // Use semi-bold weight (600) for moderate emphasis
+                          ),
+                        ),
+
+                        // BASE STATS SECTION
+                        // This section displays all 6 base statistics plus the total
+                        // Each stat is shown with: name, numeric value, and visual progress bar
+                        // Design: White card with shadow, similar to Pokémon games style
+                        const SizedBox(height: 20), // Spacing before stats section
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0), // Add horizontal padding (16px left & right)
+                          child: Container(
+                            padding: const EdgeInsets.all(16.0), // Internal padding for the stats card (all sides)
+                            decoration: BoxDecoration(
+                              color: Colors.white, // White background for stats card (clean, readable)
+                              borderRadius: BorderRadius.circular(15), // Rounded corners (15px radius for modern look)
+                              boxShadow: [ // Add shadow for depth and elevation effect
+                                BoxShadow(
+                                  color: Colors.grey.withOpacity(0.3), // Light grey shadow (30% opacity for subtle effect)
+                                  spreadRadius: 2, // Shadow spread (2px outward)
+                                  blurRadius: 5, // Shadow blur (5px for soft edges)
+                                  offset: const Offset(0, 2), // Shadow position (2px down, 0px horizontal)
+                                ),
+                              ],
                             ),
-                          ],
-                        ),
-                        child: Image.network(
-                          'https://picsum.photos/250?image=9',
-                          height: 150, // Set image height to 150 pixels
-                          width: 150, // Set image width to 150 pixels (square image)
-                        ),
-                      ),
-                      const SizedBox(height: 30), // Add 30 pixels of vertical spacing between elements
-                      // Pokémon ID with styled text
-                      Text(
-                        'ID: ${pokemon['id']}',
-                        style: GoogleFonts.pressStart2p( // Use retro 8-bit font style
-                          fontSize: 16, // Set font size to 16 pixels
-                          color: Colors.red, // Use red color to match Pokémon brand
-                          fontWeight: FontWeight.bold, // Make text bold for emphasis and readability
-                        ),
-                      ),
-                      const SizedBox(height: 10), // Add 10 pixels of vertical spacing
-                      // Pokémon name with styled text
-                      Text(
-                        pokemon['name'].toString().toUpperCase(), // Convert name to uppercase for impact
-                        style: GoogleFonts.pressStart2p( // Use retro 8-bit font style
-                          fontSize: 24, // Set larger font size (24 pixels) since this is the main title
-                          color: Colors.blue[900], // Use dark blue color (shade 900 is darkest)
-                          fontWeight: FontWeight.bold, // Make text bold for strong emphasis
-                          shadows: [ // Add shadow effects to text for depth and visibility
-                            const Shadow(
-                              offset: Offset(2, 2), // Move shadow 2 pixels right and 2 pixels down
-                              blurRadius: 3, // Blur shadow edges by 3 pixels for subtle effect
-                              color: Colors.yellow, // Use yellow shadow for Pokémon theme contrast
+                            child: Column(
+                              children: [
+                                // STATS TITLE
+                                // "BASE STATS" header in retro gaming font
+                                Text(
+                                  'BASE STATS',
+                                  style: GoogleFonts.pressStart2p(
+                                    fontSize: 14, // Medium size for section header
+                                    color: Colors.red, // Pokémon red theme
+                                    fontWeight: FontWeight.bold, // Bold for emphasis
+                                  ),
+                                ),
+                                const SizedBox(height: 15), // Spacing after title
+
+                                // HP STAT (Health Points)
+                                // Red color represents health/vitality
+                                _buildStatRow('HP', statsMap['hp'] ?? 0, Colors.red),
+                                const SizedBox(height: 8), // Spacing between stats
+
+                                // ATTACK STAT
+                                // Orange color represents physical power
+                                _buildStatRow('ATK', statsMap['attack'] ?? 0, Colors.orange),
+                                const SizedBox(height: 8),
+
+                                // DEFENSE STAT
+                                // Yellow color represents protection/armor
+                                _buildStatRow('DEF', statsMap['defense'] ?? 0, Colors.yellow[700]!),
+                                const SizedBox(height: 8),
+
+                                // SPECIAL ATTACK STAT
+                                // Blue color represents special/magical power
+                                _buildStatRow('SpA', statsMap['special-attack'] ?? 0, Colors.blue),
+                                const SizedBox(height: 8),
+
+                                // SPECIAL DEFENSE STAT
+                                // Green color represents special resistance/nature
+                                _buildStatRow('SpD', statsMap['special-defense'] ?? 0, Colors.green),
+                                const SizedBox(height: 8),
+
+                                // SPEED STAT
+                                // Pink color represents agility/quickness
+                                _buildStatRow('SPE', statsMap['speed'] ?? 0, Colors.pink),
+                                const SizedBox(height: 12), // Extra spacing before divider
+
+                                // DIVIDER LINE
+                                // Separates individual stats from the total
+                                const Divider(thickness: 2, color: Colors.grey),
+                                const SizedBox(height: 8),
+
+                                // TOTAL STATS ROW
+                                // Shows the sum of all base stats (power level indicator)
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween, // Space between label and value
+                                  children: [
+                                    Text(
+                                      'TOTAL',
+                                      style: GoogleFonts.pressStart2p(
+                                        fontSize: 12, // Slightly smaller than title
+                                        color: Colors.black, // Black for contrast
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                    Text(
+                                      totalStats.toString(), // Display calculated total
+                                      style: GoogleFonts.pressStart2p(
+                                        fontSize: 14, // Larger to emphasize the total
+                                        color: Colors.purple, // Purple for special emphasis
+                                        fontWeight: FontWeight.bold,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
                             ),
-                          ],
+                          ),
                         ),
-                      ),
-                      const SizedBox(height: 10), // Add 10 pixels of vertical spacing
-                      // Pokémon types with styled text
-                      Text(
-                        'Types: $types',
-                        style: GoogleFonts.roboto( // Use Roboto font (modern, clean sans-serif)
-                          fontSize: 18, // Set font size to 18 pixels for good readability
-                          color: Colors.green[700], // Use medium-dark green (shade 700) for nature/type theme
-                          fontWeight: FontWeight.w600, // Use semi-bold weight (600) for moderate emphasis
-                        ),
-                      ),
-                    ],
+                        const SizedBox(height: 20), // Add bottom spacing for scrolling comfort
+                      ],
+                    ),
                   );
                 },
               ),
@@ -388,6 +538,89 @@ class _MyHomePageState extends State<MyHomePage> {
           color: Colors.white, // Set icon color to white for contrast against red background
         ),
       ),
+    );
+  }
+
+  // HELPER METHOD: Build a stat row widget
+  // This reusable method creates a single row displaying a Pokémon stat
+  //
+  // PARAMETERS:
+  // - statName: The display name of the stat (e.g., "HP", "ATK", "DEF")
+  // - statValue: The numeric value of the stat (0-255 typically)
+  // - color: The color for the progress bar (visual coding by stat type)
+  //
+  // LAYOUT: [Stat Name] [Numeric Value] [Colored Progress Bar]
+  // Example: HP          45           [████████░░░░░░░░░░]
+  //
+  // RETURNS: A Row widget containing the stat display
+  Widget _buildStatRow(String statName, int statValue, Color color) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween, // Distribute space evenly
+      children: [
+        // STAT NAME LABEL
+        // Displays the abbreviated stat name (HP, ATK, DEF, etc.)
+        Expanded(
+          child: Text(
+            statName, // The stat label passed as parameter
+            style: GoogleFonts.roboto(
+              fontSize: 16, // Readable size for stat names
+              color: Colors.black, // Black for high contrast
+              fontWeight: FontWeight.w500, // Medium weight (not too bold, not too light)
+            ),
+          ),
+        ),
+        const SizedBox(width: 10), // Spacing between name and value
+
+        // STAT VALUE NUMBER
+        // Displays the numeric stat value (e.g., 45, 120, 255)
+        Text(
+          statValue.toString(), // Convert integer to string for display
+          style: GoogleFonts.roboto(
+            fontSize: 16, // Same size as name for consistency
+            color: Colors.black, // Black for readability
+            fontWeight: FontWeight.bold, // Bold to emphasize the number
+          ),
+        ),
+        const SizedBox(width: 10), // Spacing between value and progress bar
+
+        // VISUAL PROGRESS BAR
+        // Shows the stat value as a colored bar (like in Pokémon games)
+        // Higher values = longer bar, easier to compare stats visually
+        Container(
+          height: 8, // Thin horizontal bar (8px height)
+          width: 100, // Fixed width (100px) - all bars same length for comparison
+          decoration: BoxDecoration(
+            color: Colors.grey[300], // Light grey background (unfilled portion)
+            borderRadius: BorderRadius.circular(4), // Rounded corners (4px radius)
+          ),
+
+          // FRACTIONALLY SIZED BOX - Creates the filled portion
+          // This widget fills a fraction of the parent container based on widthFactor
+          child: FractionallySizedBox(
+            alignment: Alignment.centerLeft, // Align filled part to the left side
+
+            // CALCULATE FILL PERCENTAGE
+            // widthFactor: 0.0 to 1.0 (0% to 100%)
+            // Formula: statValue / 255
+            // Why 255? It's the maximum value for any Pokémon stat
+            // Examples:
+            //   - HP 45 / 255 = 0.176 (17.6% filled)
+            //   - Attack 120 / 255 = 0.470 (47% filled)
+            //   - Speed 255 / 255 = 1.0 (100% filled - rare!)
+            widthFactor: statValue / 255, // Dynamic width based on stat value
+
+            // COLORED FILL CONTAINER
+            // This is the actual colored bar that represents the stat value
+            child: Container(
+              decoration: BoxDecoration(
+                color: color, // Dynamic color based on stat type (passed as parameter)
+                // Color meanings: Red=HP, Orange=ATK, Yellow=DEF, Blue=SpA, Green=SpD, Pink=SPE
+                borderRadius: BorderRadius.circular(4), // Match parent corners
+              ),
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

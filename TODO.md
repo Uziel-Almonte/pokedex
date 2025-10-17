@@ -14,7 +14,7 @@ Lista de Pokémon
 
 I - Mostrar nombre, imagen, tipo(s) y número (#dex). 
 
-X - Implementar barra de búsqueda con debounce (300–500 ms). 
+I - Implementar barra de búsqueda con debounce (300–500 ms). 
 
 X - Diseño moderno, accesible y responsivo (Material 3). 
 
@@ -28,7 +28,7 @@ I - Mostrar nombre, número, tipos, sprite/official-artwork.
 
 X - Si hay 2 tipos, mostrar ambos; si falta imagen oficial, usar sprite. 
 
-X - Mostrar estadísticas base (HP, Atk, Def, SpA, SpD, Spe) y total. 
+O - Mostrar estadísticas base (HP, Atk, Def, SpA, SpD, Spe) y total. 
 
 X - Visualizar stats con radar chart o barras; incluir valores y porcentajes. 
 

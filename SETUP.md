@@ -335,3 +335,192 @@ All code includes comprehensive inline comments explaining:
 - Complex logic has inline step-by-step comments
 - UI elements explain both technical properties and design choices
 - Performance considerations are noted where relevant
+
+## 17. Future Enhancements (Potential)
+- Display actual Pokémon sprites instead of placeholder images
+- Add more search filters (by type, generation, etc.)
+- Implement pagination for search results
+- Add favorite/bookmark functionality
+- Cache search results for offline access
+- Add animations for Pokémon transitions
+- Implement previous/next buttons for navigation
+- Add detailed Pokémon information screen
+- Support multiple language searches
+
+## 18. Base Stats Display Implementation
+### Overview
+- Added complete base statistics display for each Pokémon
+- Shows all 6 core stats: HP, Attack, Defense, Special Attack, Special Defense, Speed
+- Includes total stats calculation (sum of all base stats)
+- Visual progress bars for easy stat comparison
+- Color-coded by stat type for quick recognition
+
+### GraphQL Query Updates
+Both `fetchPokemon()` and `searchPokemonByName()` queries now include:
+```graphql
+pokemonstats{
+  base_stat
+  stat{
+    name
+  }
+}
+```
+
+**Data Structure:**
+- `base_stat`: Integer value (0-255 typical range)
+- `stat.name`: String identifier (e.g., "hp", "attack", "defense", "special-attack", "special-defense", "speed")
+
+### Stats Extraction and Processing
+**Step 1: Extract stats from nested GraphQL response**
+- Navigates through: `pokemons[0] -> pokemonstats`
+- Returns list of stat objects
+
+**Step 2: Organize stats in a Map**
+```dart
+Map<String, int> statsMap = {};
+```
+- Key: stat name (string)
+- Value: stat value (integer)
+- Purpose: Easy access by name instead of array iteration
+- Example: `statsMap['hp']` returns HP value directly
+
+**Step 3: Calculate total stats**
+```dart
+int totalStats = 0;
+for (var stat in stats) {
+  totalStats += baseStat;
+}
+```
+- Accumulates sum of all 6 base stats
+- Typical ranges:
+  - Low: 180-200 (Shedinja: 236)
+  - Average: 400-500 (most Pokémon)
+  - High: 600-680 (legendary Pokémon)
+  - Maximum: 780 (Eternamax form)
+
+### UI Components
+
+#### Stats Card Container
+- **Background**: White for clean readability
+- **Border Radius**: 15px for modern rounded look
+- **Shadow**: Grey shadow with 30% opacity, 2px spread, 5px blur, 2px down offset
+- **Padding**: 16px on all sides
+- **Layout**: Column with title, 6 stat rows, divider, total row
+
+#### Stats Title
+- **Text**: "BASE STATS"
+- **Font**: Press Start 2P (retro gaming style)
+- **Size**: 14px
+- **Color**: Red (Pokémon theme)
+- **Position**: Centered at top of card
+
+#### Individual Stat Rows
+Created using helper method `_buildStatRow()`:
+- **Parameters**:
+  - `statName`: Display label (HP, ATK, DEF, SpA, SpD, SPE)
+  - `statValue`: Numeric value (0-255)
+  - `color`: Progress bar color
+
+- **Layout**: Row with 3 components
+  1. **Stat Name** (left) - Expanded, Roboto font, 16px, medium weight
+  2. **Stat Value** (center) - Bold, 16px, black color
+  3. **Progress Bar** (right) - Visual representation
+
+### Progress Bar Implementation
+**Container Properties:**
+- Height: 8px (thin horizontal bar)
+- Width: 100px (fixed for consistent comparison)
+- Background: Grey[300] (unfilled portion)
+- Border Radius: 4px (rounded corners)
+
+**FractionallySizedBox Widget:**
+- **Purpose**: Fills portion of container based on stat value
+- **Alignment**: centerLeft (fills from left to right)
+- **widthFactor Calculation**: `statValue / 255`
+  - 255 is max possible stat value
+  - Results in 0.0 to 1.0 (0% to 100%)
+  - Example: HP 45 → 45/255 = 0.176 (17.6% filled)
+
+**Color Coding by Stat Type:**
+- **HP**: Red (health/vitality)
+- **Attack**: Orange (physical power)
+- **Defense**: Yellow[700] (protection/armor)
+- **Special Attack**: Blue (special/magical power)
+- **Special Defense**: Green (special resistance/nature)
+- **Speed**: Pink (agility/quickness)
+
+### Total Stats Display
+- **Position**: Bottom of stats card, below divider
+- **Layout**: Row with space between label and value
+- **Label**: "TOTAL" in 12px Press Start 2P font
+- **Value**: Sum of all stats in 14px Press Start 2P font
+- **Color**: Purple (special emphasis, different from individual stats)
+
+### ScrollView Implementation
+- **Widget**: SingleChildScrollView wraps entire Pokémon display
+- **Purpose**: Allows scrolling when content exceeds screen height
+- **Benefit**: Accommodates stats card without layout overflow
+- **User Experience**: Smooth vertical scrolling on all screen sizes
+
+### Helper Method: `_buildStatRow()`
+**Purpose**: Reusable widget builder for stat rows
+
+**Parameters:**
+1. `String statName` - Display label
+2. `int statValue` - Numeric value
+3. `Color color` - Progress bar color
+
+**Returns**: Row widget with complete stat display
+
+**Advantages:**
+- Code reusability (6 stats use same method)
+- Consistency across all stat displays
+- Easy to maintain and modify
+- Reduces code duplication
+
+### Design Decisions
+
+**Why Map for Stats?**
+- Direct access: O(1) time complexity
+- No iteration needed for specific stat
+- Clean code: `statsMap['hp']` vs looping through array
+- Order control: Display stats in desired order regardless of API response order
+
+**Why 255 as Max Value?**
+- Standard maximum for Pokémon base stats in games
+- Most stats range 1-255
+- Provides accurate percentage representation
+- Matches official Pokémon stat system
+
+**Why Different Colors for Each Stat?**
+- **Visual Recognition**: Users quickly identify stat types
+- **Accessibility**: Color coding helps distinguish stats at a glance
+- **Game Authenticity**: Matches Pokémon game conventions
+- **User Experience**: Easier to compare similar stats across different Pokémon
+
+**Why Progress Bars?**
+- **Visual Comparison**: Easier than comparing numbers
+- **Intuitive**: Length represents strength
+- **Engagement**: More visually appealing than numbers alone
+- **Quick Assessment**: See Pokémon strengths/weaknesses instantly
+
+### Null Safety
+All stat extraction uses null-safe operators:
+```dart
+statsMap['hp'] ?? 0  // Returns 0 if HP stat not found
+```
+- Prevents crashes if API response missing data
+- Displays 0 for missing stats (edge cases)
+- Maintains app stability
+
+### Performance Considerations
+- **Single Loop**: Stats extracted and totaled in one iteration
+- **Efficient Storage**: Map provides O(1) access time
+- **Lazy Building**: Stats only calculated when Pokémon data available
+- **No Re-renders**: Stats calculated once per Pokémon load
+
+### Integration with Existing Features
+- **Works with Search**: Stats display for both ID navigation and search results
+- **Works with Debounce**: Stats load after debounced search
+- **Responsive**: Adapts to different screen sizes
+- **Scrollable**: Doesn't break layout on small screens
