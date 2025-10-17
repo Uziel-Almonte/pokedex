@@ -167,3 +167,171 @@ This document details the setup and implementation steps for the Pokedex app, in
 - **Visual Hierarchy**: Larger font sizes and bold weights for important information (name > types > ID)
 - **Depth & Dimension**: Strategic use of shadows on text and containers for modern card-like appearance
 - **Accessibility**: High contrast colors (yellow on red, white on red) for readability
+
+## 14. Search Functionality with Debounce
+### Overview
+- Implemented a search bar that allows users to search for Pokémon by name
+- Uses debounce technique to optimize performance and reduce API calls
+- Seamlessly switches between two modes: ID navigation and name search
+
+### Components Added
+- **TextEditingController** (`_searchController`):
+  - Manages the text input state in the search field
+  - Allows reading, clearing, and listening to changes
+  - Must be disposed of to prevent memory leaks
+
+- **Timer** (`_debounce`):
+  - Implements debounce functionality
+  - Delays search execution by 500ms after user stops typing
+  - Cancels previous timers if user continues typing
+
+- **Search Query State** (`_searchQuery`):
+  - Stores the current active search term
+  - Empty string = ID navigation mode
+  - Non-empty string = search mode
+
+### Debounce Implementation
+**Purpose**: Prevent excessive API calls while user is typing
+
+**How it works**:
+1. User types a character in the search field
+2. `_onSearchChanged()` is called
+3. If a timer is already active, cancel it (user is still typing)
+4. Create a new 500ms timer
+5. If 500ms passes without new input, update `_searchQuery` and trigger search
+6. If user types again before 500ms, restart from step 2
+
+**Benefits**:
+- Reduces API calls from potentially dozens to just one
+- Improves app performance and reduces server load
+- Better user experience (no lag from constant queries)
+- Network efficiency (especially important on mobile data)
+
+### Search Methods
+- **Function**: `searchPokemonByName(String name, GraphQLClient client)`
+  - Searches for Pokémon using case-insensitive pattern matching
+  - Uses GraphQL `_ilike` operator (PostgreSQL)
+  - Pattern: `%$name%` allows partial matching (e.g., "pika" matches "pikachu")
+  - Returns first matching result (limit: 1)
+  - Query structure identical to `fetchPokemon()` for consistency
+
+### Search Bar UI Design
+- **TextField Styling**:
+  - Rounded pill shape (30px border radius)
+  - White background with colored borders
+  - Red border when not focused (2px width)
+  - Blue border when focused (2px width)
+  - 16px padding on all sides
+
+- **Icons**:
+  - **Prefix Icon**: Search icon (magnifying glass) in red
+  - **Suffix Icon**: Clear button (X icon) that:
+    - Only appears when text is present
+    - Clears the search field
+    - Resets to ID navigation mode
+    - Red color matching theme
+
+- **Placeholder**:
+  - Text: "Search Pokémon..."
+  - Font: Roboto (readable, modern)
+  - Color: Grey[600] for subtle hint
+
+### Smart Mode Switching
+- **Implementation**: Conditional `future` in `FutureBuilder`
+  ```dart
+  future: _searchQuery.isEmpty
+      ? fetchPokemon(_counter, client)      // ID Navigation Mode
+      : searchPokemonByName(_searchQuery, client)  // Search Mode
+  ```
+
+- **ID Navigation Mode** (default):
+  - Triggered when search field is empty
+  - Uses counter to fetch Pokémon by ID
+  - Floating action button increments counter
+  - Sequential browsing experience
+
+- **Search Mode**:
+  - Triggered when user enters search text
+  - Uses debounced query to search by name
+  - Floating action button still works (increments counter for when search is cleared)
+  - Results update automatically after debounce delay
+
+### Layout Changes
+- **Column Structure**:
+  - Search bar at the top (Padding with 16px spacing)
+  - Pokémon display area below (Expanded widget)
+  - Floating action button remains in bottom-right
+
+- **Responsive Design**:
+  - Search bar takes fixed space at top
+  - Pokémon display expands to fill remaining space
+  - Works on various screen sizes
+
+### Memory Management
+- **dispose() Method**:
+  - Disposes `_searchController` to free resources
+  - Cancels any pending debounce timer
+  - Prevents memory leaks when widget is removed
+  - Critical for app performance
+
+### User Experience Features
+1. **Visual Feedback**:
+   - Border color changes on focus (red → blue)
+   - Clear button appears/disappears dynamically
+   - Loading spinner during search
+   - "No Pokémon found" message for failed searches
+
+2. **Intuitive Interaction**:
+   - Type to search, no search button needed
+   - Clear button for quick reset
+   - Automatic search after short pause
+   - Seamless mode switching
+
+3. **Performance Optimizations**:
+   - Debounce reduces server load
+   - Case-insensitive search (`toLowerCase()`)
+   - Whitespace trimming (`trim()`)
+   - Single result limit for faster queries
+
+## 15. Dependencies Update
+### Added Dependency
+- `dart:async` - Core Dart library for asynchronous programming
+  - Required for `Timer` class used in debounce implementation
+  - No installation needed (part of Dart SDK)
+  - Imported with: `import 'dart:async';`
+
+### Complete Dependencies List
+```yaml
+dependencies:
+  flutter:
+    sdk: flutter
+  graphql_flutter: ^5.0.1    # GraphQL API integration
+  http: ^1.1.0               # HTTP requests
+  google_fonts: ^6.3.2       # Custom Google Fonts
+  cupertino_icons: ^1.0.8    # iOS-style icons
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^5.0.0      # Linting rules
+```
+
+## 16. Code Documentation Standards
+### Comment Structure
+All code includes comprehensive inline comments explaining:
+- **What**: What each line/block does
+- **Why**: Reasoning behind implementation choices
+- **How**: Step-by-step process explanations (especially for debounce)
+
+### Special Comment Blocks
+- **DEBOUNCE EXPLANATION**: Multi-line comment block explaining the debounce pattern with numbered steps
+- **SEARCH BAR SECTION**: Detailed explanation of TextField features and styling
+- **SMART SWITCHING**: Explanation of conditional logic for mode switching
+- **HOW IT WORKS**: Step-by-step breakdowns for complex logic
+
+### Documentation Style
+- Variable declarations include purpose and usage
+- Methods have function-level documentation
+- Complex logic has inline step-by-step comments
+- UI elements explain both technical properties and design choices
+- Performance considerations are noted where relevant
