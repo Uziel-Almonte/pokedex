@@ -15,6 +15,7 @@ This document details the setup and implementation steps for the Pokedex app, in
   - `google_fonts: ^6.3.2` for custom Google Fonts styling (Press Start 2P retro font)
   - `cupertino_icons: ^1.0.8` for iOS-style icons
   - `flutter_lints: ^5.0.0` for recommended linting rules
+  - `provider: ^6.1.1` for state management (theme switching)
 
 ## 3. GraphQL Integration
 - Used the PokeAPI GraphQL endpoint: `https://graphql.pokeapi.co/v1beta2`
@@ -41,6 +42,8 @@ This document details the setup and implementation steps for the Pokedex app, in
   - `MyApp` (StatelessWidget): Root widget, sets up Material theme with Pokémon colors and home page.
   - `MyHomePage` (StatefulWidget): Main screen, displays Pokémon info with styled UI and a button to fetch the next Pokémon.
   - `_MyHomePageState`: Handles state, fetching, and UI updates.
+
+
 
 ## 6. Fetching Pokémon Data
 - Function: `fetchPokemon(int id, GraphQLClient client)`
@@ -148,7 +151,7 @@ This document details the setup and implementation steps for the Pokedex app, in
 - **Package**: `google_fonts: ^6.3.2` installed via pubspec.yaml
 - **Primary Font**: Press Start 2P - retro 8-bit style perfect for gaming/Pokémon theme
 - **Secondary Font**: Roboto - modern, clean font for secondary information (types)
-- **Usage**: 
+- **Usage**:
   - `GoogleFonts.pressStart2p()` for titles, ID, and retro-styled text
   - `GoogleFonts.roboto()` for body text and types
 - **Benefits**:
@@ -159,7 +162,7 @@ This document details the setup and implementation steps for the Pokedex app, in
 
 ## 13. Design Philosophy
 - **Retro Gaming Aesthetic**: Press Start 2P font evokes classic 8-bit Pokémon games
-- **Color Psychology**: 
+- **Color Psychology**:
   - Red: Energy, excitement (Pokémon brand)
   - Yellow: Joy, optimism (Pikachu, classic branding)
   - Blue: Trust, stability (balance and contrast)

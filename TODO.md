@@ -18,7 +18,7 @@ I - Implementar barra de búsqueda con debounce (300–500 ms).
 
 X - Diseño moderno, accesible y responsivo (Material 3). 
 
-X - Aplicar temas dinámicos (oscuro/claro). 
+O - Aplicar temas dinámicos (oscuro/claro). 
 
 X - Pantalla de error con mensaje y botón “Reintentar”. 
 

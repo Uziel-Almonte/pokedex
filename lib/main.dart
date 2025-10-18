@@ -4,9 +4,15 @@ import 'dart:async';
 // Import GraphQL Flutter package for GraphQL client and widgets
 import 'package:graphql_flutter/graphql_flutter.dart';
 // Import the GraphQLService singleton
+import 'app_theme.dart';
 import 'graphql.dart';
 //fonts de google
 import 'package:google_fonts/google_fonts.dart';
+import 'theme_provider.dart';
+import 'package:provider/provider.dart';
+
+
+const darkMode = false;
 
 // Main entry point for the app
 void main() async {
@@ -16,9 +22,12 @@ void main() async {
   await GraphQLService().init();
   // Run the Flutter app, providing the GraphQL client to the widget tree
   runApp(
-    GraphQLProvider(
-      client: ValueNotifier(GraphQLService().client), // Use the singleton client
-      child: const MyApp(), // Set MyApp as the root widget
+    ChangeNotifierProvider(
+      create: (_) => AppThemeState(),
+      child: GraphQLProvider(
+        client: ValueNotifier(GraphQLService().client),
+        child: const MyApp(),
+      ),
     ),
   );
 }
@@ -31,15 +40,14 @@ class MyApp extends StatelessWidget {
   // Build method returns the widget tree for the app
   @override
   Widget build(BuildContext context) {
+    final appThemeState = Provider.of<AppThemeState>(context);
     // Return a MaterialApp widget
     return MaterialApp(
+
       title: 'Pokedex', // Set the app title
-      theme: ThemeData(
-        // Set the color scheme for the app with Pokémon red theme
-        colorScheme: ColorScheme.fromSeed(seedColor: Colors.red),
-        // Set scaffold background to light blue (Pokémon theme)
-        scaffoldBackgroundColor: Colors.blue[50],
-      ),
+        theme: AppTheme.lightTheme,
+        darkTheme: AppTheme.darkTheme,
+        themeMode: appThemeState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
       home: const MyHomePage(title: 'Pokedex'), // Set the home page
     );
   }
@@ -58,11 +66,14 @@ class MyHomePage extends StatefulWidget {
   State<MyHomePage> createState() => _MyHomePageState();
 }
 
+
 // State class for MyHomePage
 class _MyHomePageState extends State<MyHomePage> {
   // Counter to keep track of the current Pokémon ID
   // This increments when the user presses the floating action button
   int _counter = 1;
+
+  bool get isDarkMode => Provider.of<AppThemeState>(context).isDarkMode;
 
   // Text controller for search bar - manages the text input state
   // Allows us to read, clear, and listen to changes in the search field
@@ -208,7 +219,7 @@ class _MyHomePageState extends State<MyHomePage> {
       appBar: AppBar(
         backgroundColor: Colors.red, // Set Pokémon red color for app bar background
         centerTitle: true, // Center the title horizontally in the app bar
-        title: Text(
+        title: Text( // Set app bar title with Pokémon style
           widget.title,
           style: GoogleFonts.pressStart2p( // Apply Press Start 2P font (retro 8-bit style)
             fontSize: 20, // Set font size to 20 pixels
@@ -222,7 +233,33 @@ class _MyHomePageState extends State<MyHomePage> {
               ),
             ],
           ),
-        ), // Set app bar title with Pokémon style
+        ),
+        actions: [ // Adds the theme toggle switch to the app bar
+          Consumer<AppThemeState>( // Listen to theme state changes
+            builder: (context, themeState, _) {
+              return Row(
+                children: [
+                  Icon( // Light mode icon
+                    Icons.light_mode,
+                    color: themeState.isDarkMode ? Colors.grey : Colors.yellow,
+                    size: 20,
+                  ),
+                  Switch( // Actual Toggle Switch
+                    value: themeState.isDarkMode,
+                    onChanged: (_) => themeState.toggleTheme(), // uses an arrow function to toggle theme
+                    activeColor: Colors.yellow,
+                  ),
+                  Icon(
+                    Icons.dark_mode,
+                    color: themeState.isDarkMode ? Colors.yellow : Colors.grey,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                ],
+              );
+            },
+          ),
+        ],
       ),
       body: Column(
         children: [
@@ -258,7 +295,7 @@ class _MyHomePageState extends State<MyHomePage> {
 
                 // Background styling for the search field
                 filled: true, // Enable background fill
-                fillColor: Colors.white, // White background
+                fillColor: isDarkMode ? Colors.grey[800] : Colors.white, // White background
 
                 // Default border (no visible border, just rounded corners)
                 border: OutlineInputBorder(
@@ -366,7 +403,7 @@ class _MyHomePageState extends State<MyHomePage> {
                         Container(
                           padding: const EdgeInsets.all(20), // Add 20 pixels of padding inside the container on all sides
                           decoration: BoxDecoration(
-                            color: Colors.white, // Set container background to white for a clean card look
+                              color: isDarkMode ? Colors.grey[800] : Colors.white, // Set container background to white for a clean card look
                             borderRadius: BorderRadius.circular(20), // Round the corners with 20 pixel radius for modern look
                             boxShadow: [ // Add shadow effects to the container for depth and elevation
                               BoxShadow(
@@ -399,13 +436,13 @@ class _MyHomePageState extends State<MyHomePage> {
                           pokemon['name'].toString().toUpperCase(), // Convert name to uppercase for impact
                           style: GoogleFonts.pressStart2p( // Use retro 8-bit font style
                             fontSize: 24, // Set larger font size (24 pixels) since this is the main title
-                            color: Colors.blue[900], // Use dark blue color (shade 900 is darkest)
+                            color: isDarkMode ? Colors.red : Colors.blue[900], // Use dark blue color (shade 900 is darkest)
                             fontWeight: FontWeight.bold, // Make text bold for strong emphasis
                             shadows: [ // Add shadow effects to text for depth and visibility
-                              const Shadow(
-                                offset: Offset(2, 2), // Move shadow 2 pixels right and 2 pixels down
+                              Shadow(
+                                offset: const Offset(2, 2), // Move shadow 2 pixels right and 2 pixels down
                                 blurRadius: 3, // Blur shadow edges by 3 pixels for subtle effect
-                                color: Colors.yellow, // Use yellow shadow for Pokémon theme contrast
+                                color: isDarkMode ? Colors.white : Colors.yellow, // Use yellow shadow for Pokémon theme contrast
                               ),
                             ],
                           ),
@@ -431,7 +468,7 @@ class _MyHomePageState extends State<MyHomePage> {
                           child: Container(
                             padding: const EdgeInsets.all(16.0), // Internal padding for the stats card (all sides)
                             decoration: BoxDecoration(
-                              color: Colors.white, // White background for stats card (clean, readable)
+                              color: isDarkMode ? Colors.grey[800] : Colors.white, // White background for stats card (clean, readable)
                               borderRadius: BorderRadius.circular(15), // Rounded corners (15px radius for modern look)
                               boxShadow: [ // Add shadow for depth and elevation effect
                                 BoxShadow(
@@ -500,7 +537,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                       'TOTAL',
                                       style: GoogleFonts.pressStart2p(
                                         fontSize: 12, // Slightly smaller than title
-                                        color: Colors.black, // Black for contrast
+                                        color: isDarkMode ? Colors.white : Colors.black, // Black for contrast
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
@@ -564,7 +601,7 @@ class _MyHomePageState extends State<MyHomePage> {
             statName, // The stat label passed as parameter
             style: GoogleFonts.roboto(
               fontSize: 16, // Readable size for stat names
-              color: Colors.black, // Black for high contrast
+              color: isDarkMode ? Colors.white : Colors.black, // Black for high contrast
               fontWeight: FontWeight.w500, // Medium weight (not too bold, not too light)
             ),
           ),
@@ -577,7 +614,7 @@ class _MyHomePageState extends State<MyHomePage> {
           statValue.toString(), // Convert integer to string for display
           style: GoogleFonts.roboto(
             fontSize: 16, // Same size as name for consistency
-            color: Colors.black, // Black for readability
+            color: isDarkMode ? Colors.white : Colors.black, // Black for readability
             fontWeight: FontWeight.bold, // Bold to emphasize the number
           ),
         ),
