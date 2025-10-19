@@ -11,6 +11,9 @@ import 'package:google_fonts/google_fonts.dart';
 import 'theme_provider.dart';
 import 'package:provider/provider.dart';
 
+// Import the TCG service for Pokémon trading cards
+import 'tcgCards.dart';
+
 
 const darkMode = false;
 
@@ -87,6 +90,19 @@ class _MyHomePageState extends State<MyHomePage> {
   // Current search query string - stores the active search term
   // When empty, the app shows Pokémon by ID; when filled, it searches by name
   String _searchQuery = '';
+
+  // Add initState to listen to controller changes so the suffix icon updates immediately
+  @override
+  void initState() {
+    super.initState();
+    // When the controller text changes we call setState() so widgets that depend on
+    // _searchController.text (like the clear button) rebuild immediately instead of
+    // waiting for the debounce to complete.
+    _searchController.addListener(() {
+      // Only rebuild if mounted to avoid setState after dispose
+      if (mounted) setState(() {});
+    });
+  }
 
   // Cleanup method called when this widget is removed from the widget tree
   // It's important to dispose of controllers and timers to prevent memory leaks
@@ -207,6 +223,219 @@ class _MyHomePageState extends State<MyHomePage> {
     final species = result.data?['pokemonspecies'];
     // Return the first species if available, otherwise null
     return (species != null && species.isNotEmpty) ? species[0] : null;
+  }
+
+  // New: Show Pokémon trading cards in a bottom sheet using TCG service
+  // This method fetches cards by Pokémon name and displays them in a grid
+  void _showPokemonCards(String pokemonName) {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) {
+        return FutureBuilder<List<Map<String, dynamic>>>(
+          future: TCGService.searchCardsByPokemon(pokemonName),
+          builder: (context, snapshot) {
+            // Show loading spinner while fetching data
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Container(
+                height: MediaQuery.of(context).size.height * 0.4,
+                decoration: BoxDecoration(
+                  color: isDarkMode ? Colors.grey[900] : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: const Center(child: CircularProgressIndicator(color: Colors.red)),
+              );
+            }
+
+            // Show error if something went wrong
+            if (snapshot.hasError) {
+              return Container(
+                height: MediaQuery.of(context).size.height * 0.3,
+                decoration: BoxDecoration(
+                  color: isDarkMode ? Colors.grey[900] : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Center(
+                  child: Padding(
+                    padding: const EdgeInsets.all(16.0),
+                    child: Text(
+                      'Error loading cards: ${snapshot.error}',
+                      style: GoogleFonts.roboto(color: Colors.red),
+                      textAlign: TextAlign.center,
+                    ),
+                  ),
+                ),
+              );
+            }
+
+            final cards = snapshot.data ?? [];
+
+            // Show message if no cards found
+            if (cards.isEmpty) {
+              return Container(
+                height: MediaQuery.of(context).size.height * 0.3,
+                decoration: BoxDecoration(
+                  color: isDarkMode ? Colors.grey[900] : Colors.white,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                ),
+                child: Center(
+                  child: Text(
+                    'No trading cards found for $pokemonName',
+                    style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
+                ),
+              );
+            }
+
+            return DraggableScrollableSheet(
+              initialChildSize: 0.7,
+              minChildSize: 0.4,
+              maxChildSize: 0.95,
+              builder: (context, scrollController) {
+                return Container(
+                  decoration: BoxDecoration(
+                    color: isDarkMode ? Colors.grey[900] : Colors.white,
+                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
+                  ),
+                  child: Column(
+                    children: [
+                      // Drag handle
+                      Container(
+                        margin: const EdgeInsets.symmetric(vertical: 10),
+                        width: 40,
+                        height: 4,
+                        decoration: BoxDecoration(
+                          color: Colors.grey[400],
+                          borderRadius: BorderRadius.circular(2),
+                        ),
+                      ),
+                      // Title
+                      Padding(
+                        padding: const EdgeInsets.all(16.0),
+                        child: Text(
+                          '${pokemonName.toUpperCase()} CARDS (${cards.length})',
+                          style: GoogleFonts.pressStart2p(fontSize: 14, color: Colors.red),
+                        ),
+                      ),
+                      // Cards grid
+                      Expanded(
+                        child: GridView.builder(
+                          controller: scrollController,
+                          padding: const EdgeInsets.all(12),
+                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                            crossAxisCount: 2,
+                            childAspectRatio: 0.68,
+                            crossAxisSpacing: 10,
+                            mainAxisSpacing: 10,
+                          ),
+                          itemCount: cards.length,
+                          itemBuilder: (context, index) {
+                            final card = cards[index];
+                            // Extract image URL - it's a direct string in TCGDex API
+                            // Format: "https://assets.tcgdex.net/en/swsh/swsh3/136"
+                            // We can append "/high.png" or "/low.png" for different qualities
+                            final baseImageUrl = card['image']?.toString() ?? '';
+                            final imageUrl = baseImageUrl.isNotEmpty ? '$baseImageUrl/high.png' : '';
+
+                            return GestureDetector(
+                              onTap: () {
+                                if (imageUrl.isNotEmpty) {
+                                  showDialog(
+                                    context: context,
+                                    builder: (_) => Dialog(
+                                      backgroundColor: Colors.black,
+                                      child: InteractiveViewer(
+                                        child: Image.network(
+                                          imageUrl,
+                                          errorBuilder: (c, e, s) => Center(
+                                            child: Text('Image not available', style: GoogleFonts.roboto(color: Colors.white)),
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                }
+                              },
+                              child: Card(
+                                elevation: 3,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                                  children: [
+                                    // Card image
+                                    Expanded(
+                                      child: ClipRRect(
+                                        borderRadius: const BorderRadius.vertical(
+                                          top: Radius.circular(10),
+                                        ),
+                                        child: imageUrl.isNotEmpty
+                                            ? Image.network(
+                                                imageUrl,
+                                                fit: BoxFit.cover,
+                                                loadingBuilder: (context, child, progress) {
+                                                  if (progress == null) return child;
+                                                  return const Center(
+                                                    child: CircularProgressIndicator(
+                                                      color: Colors.red,
+                                                    ),
+                                                  );
+                                                },
+                                                errorBuilder: (c, e, s) => const Center(
+                                                  child: Icon(Icons.error, color: Colors.red),
+                                                ),
+                                              )
+                                            : const Center(
+                                                child: Icon(Icons.image_not_supported),
+                                              ),
+                                      ),
+                                    ),
+                                    // Card info (name and set)
+                                    Padding(
+                                      padding: const EdgeInsets.all(8.0),
+                                      child: Column(
+                                        crossAxisAlignment: CrossAxisAlignment.start,
+                                        children: [
+                                          Text(
+                                            card['name']?.toString() ?? 'Unknown',
+                                            style: GoogleFonts.roboto(
+                                              fontSize: 12,
+                                              fontWeight: FontWeight.bold,
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                          Text(
+                                            card['set']?['name']?.toString() ?? card['id']?.toString() ?? '',
+                                            style: GoogleFonts.roboto(
+                                              fontSize: 10,
+                                              color: Colors.grey[600],
+                                            ),
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              },
+            );
+          },
+        );
+      },
+    );
   }
 
   // Build method returns the widget tree for the home page
@@ -342,7 +571,7 @@ class _MyHomePageState extends State<MyHomePage> {
                     return Text(
                       'No Pokémon found.',
                       style: GoogleFonts.pressStart2p( // Use retro font for error message
-                        fontSize: 14, // Set font size to 14 pixels for readability
+                        fontSize: 14, // Set font size to 14 pixels
                         color: Colors.red, // Use red color to indicate error/warning
                       ),
                     );
@@ -553,6 +782,28 @@ class _MyHomePageState extends State<MyHomePage> {
                                 ),
                               ],
                             ),
+                          ),
+                        ),
+
+                        // TRADING CARDS BUTTON
+                        // This button opens a bottom sheet showing all trading cards for the current Pokémon
+                        // Uses the TCGDex API to fetch real card images from various TCG sets
+                        const SizedBox(height: 20), // Spacing before button
+                        ElevatedButton.icon(
+                          onPressed: () => _showPokemonCards(pokemon['name']), // Open cards modal with Pokémon name
+                          icon: const Icon(Icons.style, color: Colors.white), // Playing card icon
+                          label: Text(
+                            'VIEW CARDS',
+                            style: GoogleFonts.pressStart2p(fontSize: 12, color: Colors.white),
+                          ),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.red, // Pokémon red theme
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20), // Rounded pill-shaped button
+                            ),
+                            elevation: 4, // Add shadow for depth
                           ),
                         ),
                         const SizedBox(height: 20), // Add bottom spacing for scrolling comfort

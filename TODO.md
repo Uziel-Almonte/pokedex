@@ -96,7 +96,7 @@ X - Animar al agregar/quitar favoritos o cambiar de vista.
 
 7. Compartir Pokémon — 5 %
 
-X - Generar una Pokémon Card y compartirla como imagen.
+I - Generar una Pokémon Card y compartirla como imagen.
 
 8. Mapa Interactivo — 5 %
 

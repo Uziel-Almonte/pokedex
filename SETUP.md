@@ -11,11 +11,12 @@ This document details the setup and implementation steps for the Pokedex app, in
 ## 2. Dependencies
 - Added the following dependencies in `pubspec.yaml`:
   - `graphql_flutter: ^5.0.1` for GraphQL API integration
-  - `http: ^1.1.0` for HTTP requests (not used in main logic)
+  - `http: ^1.1.0` for HTTP requests (TCG card fetching)
   - `google_fonts: ^6.3.2` for custom Google Fonts styling (Press Start 2P retro font)
   - `cupertino_icons: ^1.0.8` for iOS-style icons
   - `flutter_lints: ^5.0.0` for recommended linting rules
-  - `provider: ^6.1.1` for state management (theme switching)
+  - `provider: ^6.1.5+1` for state management (theme switching)
+  - `framework: ^1.0.3` for additional framework utilities
 
 ## 3. GraphQL Integration
 - Used the PokeAPI GraphQL endpoint: `https://graphql.pokeapi.co/v1beta2`
@@ -38,29 +39,75 @@ This document details the setup and implementation steps for the Pokedex app, in
 
 ## 5. Main App Structure
 - **main.dart** contains all main logic and UI:
-  - `main()` function initializes the GraphQLService, and runs the app wrapped in GraphQLProvider.
-  - `MyApp` (StatelessWidget): Root widget, sets up Material theme with Pokémon colors and home page.
-  - `MyHomePage` (StatefulWidget): Main screen, displays Pokémon info with styled UI and a button to fetch the next Pokémon.
+  - `main()` function initializes the GraphQLService, and runs the app wrapped in GraphQLProvider and ChangeNotifierProvider (for theme state).
+  - `MyApp` (StatelessWidget): Root widget, sets up Material theme with Pokémon colors and home page. Includes light/dark theme support.
+  - `MyHomePage` (StatefulWidget): Main screen, displays Pokémon info with styled UI and buttons for navigation and viewing cards.
   - `_MyHomePageState`: Handles state, fetching, and UI updates.
-
-
 
 ## 6. Fetching Pokémon Data
 - Function: `fetchPokemon(int id, GraphQLClient client)`
   - Sends a GraphQL query to fetch a Pokémon species by its ID.
-  - Returns a map with the Pokémon's `id`, `name`, `types`, and `sprites`.
+  - Returns a map with the Pokémon's `id`, `name`, `types`, `sprites`, and **base stats** (HP, Attack, Defense, Special Attack, Special Defense, Speed).
   - Query structure:
     - `pokemonspecies` filtered by ID
     - Nested `pokemons` → `pokemontypes` → `type` → `name`
     - Nested `pokemons` → `pokemonsprites` → `sprites`
-- Uses a `FutureBuilder` in the UI to display loading, error, or Pokémon data.
-- The floating action button increments the counter, triggering a new fetch for the next Pokémon.
+    - Nested `pokemons` → `pokemonstats` → `base_stat` and `stat` → `name`
+  - Uses a `FutureBuilder` in the UI to display loading, error, or Pokémon data.
+  - The floating action button increments the counter, triggering a new fetch for the next Pokémon.
 
-## 7. UI Design & Styling (Pokémon Theme)
+- Function: `searchPokemonByName(String name, GraphQLClient client)`
+  - Searches for Pokémon by name using case-insensitive matching (PostgreSQL ILIKE operator).
+  - Uses `%name%` pattern matching to find Pokémon containing the search term.
+  - Returns the first matching Pokémon found.
+  - Includes same nested data as `fetchPokemon` (types, sprites, stats).
+
+## 7. Search Functionality with Debounce
+- **Search Bar** (TextField):
+  - Allows users to search Pokémon by name
+  - Features:
+    - Search icon prefix
+    - Clear button (X icon) that appears when text is entered
+    - Rounded pill-shaped design with red/blue borders
+    - Theme-aware background color (dark mode support)
+  
+- **Debounce Implementation**:
+  - Uses a `Timer` to delay search queries by 500ms after user stops typing
+  - Prevents excessive API calls on every keystroke
+  - Controller (`_searchController`) manages text input state
+  - `initState` adds listener to controller for immediate UI updates
+  - How it works:
+    1. User types a character
+    2. Cancel any existing timer
+    3. Start new 500ms timer
+    4. If 500ms passes without input, execute search
+    5. If user types again, restart from step 2
+
+## 8. Theme System
+- **Theme Provider** (theme_provider.dart):
+  - `AppThemeState` class extends `ChangeNotifier` for state management
+  - Manages dark/light mode preference
+  - `toggleTheme()` method switches between modes
+  - Notifies listeners when theme changes
+
+- **App Theme** (app_theme.dart):
+  - `AppTheme` class provides static light and dark themes
+  - Light theme: White background, red primary color
+  - Dark theme: Dark grey background, red accent color
+  - Both themes use Pokémon-inspired color palette
+
+- **Theme Toggle Switch**:
+  - Located in AppBar actions
+  - Shows sun/moon icons indicating current mode
+  - Switch component toggles between light/dark themes
+  - Persists across app sessions
+
+## 9. UI Design & Styling (Pokémon Theme)
 ### Theme Configuration
 - **App Theme**:
   - Color scheme: Red seed color (Pokémon primary color)
-  - Scaffold background: Light blue (`Colors.blue[50]`) for a Pokémon-themed look
+  - Light mode: Light background with red accents
+  - Dark mode: Dark grey background with red/yellow accents
 
 ### AppBar Styling
 - **Background**: Red (`Colors.red`) - iconic Pokémon color
@@ -70,14 +117,15 @@ This document details the setup and implementation steps for the Pokedex app, in
   - Color: Yellow (`Colors.yellow`) - classic Pokémon branding
   - Shadow: Blue shadow with 2px offset and 4px blur for depth
   - Centered horizontally
+- **Actions**: Theme toggle switch with light/dark mode icons
 
 ### Pokémon Card Display
 - **Container with decorations**:
-  - White background (`Colors.white`) for clean card appearance
+  - Theme-aware background (white in light mode, dark grey in dark mode)
   - Rounded corners: 20px border radius
-  - Box shadow: Grey shadow with 50% opacity, 5px spread, 7px blur, 3px vertical offset
+  - Box shadow: Grey shadow with opacity, spread, blur, and vertical offset
   - Padding: 20px on all sides
-  - Image: 150x150 pixels (placeholder, to be replaced with actual Pokémon sprites)
+  - Image: 150x150 pixels official Pokémon artwork from PokeAPI
 
 ### Text Styling
 - **Pokémon ID**:
@@ -89,7 +137,7 @@ This document details the setup and implementation steps for the Pokedex app, in
 - **Pokémon Name**:
   - Font: Press Start 2P (retro style)
   - Size: 24 pixels (largest, main title)
-  - Color: Dark blue (`Colors.blue[900]`)
+  - Color: Dark blue in light mode, red in dark mode
   - Weight: Bold
   - Transform: Uppercase for impact
   - Shadow: Yellow shadow with 2px offset and 3px blur
@@ -100,430 +148,174 @@ This document details the setup and implementation steps for the Pokedex app, in
   - Color: Dark green (`Colors.green[700]`) - nature/type theme
   - Weight: Semi-bold (w600)
 
-### Interactive Elements
-- **Floating Action Button**:
-  - Background: Red (`Colors.red`) - Pokémon theme
-  - Icon: Forward arrow (`Icons.arrow_forward`) in white
-  - Action: Increments counter to fetch next Pokémon
-  - Tooltip: "Next Pokémon"
+## 10. Base Stats Display
+- **Stats Section**:
+  - Shows all 6 Pokémon base statistics in a card container
+  - Stats displayed: HP, Attack, Defense, Special Attack, Special Defense, Speed
+  - Each stat row includes:
+    - Abbreviated name (HP, ATK, DEF, SpA, SpD, SPE)
+    - Numeric value (0-255 range)
+    - Visual progress bar with color coding
+  - Total stats row shows sum of all base stats
+  
+- **Stats Visualization**:
+  - Color-coded progress bars:
+    - HP: Red (health/vitality)
+    - Attack: Orange (physical power)
+    - Defense: Yellow (protection)
+    - Special Attack: Blue (special power)
+    - Special Defense: Green (resistance)
+    - Speed: Pink (agility)
+  - Bar width calculated as: `statValue / 255` (255 is max Pokémon stat)
+  - Progress bars show relative strength at a glance
 
-### Loading & Error States
-- **Loading Indicator**: Red circular progress indicator matching theme
-- **Error Message**: Styled with Press Start 2P font in red, 14px size
+- **Helper Method**: `_buildStatRow(String statName, int statValue, Color color)`
+  - Reusable widget builder for stat rows
+  - Creates consistent layout for all stats
+  - Parameters: stat name, value, and color for visual coding
 
-### Spacing
-- Uses `SizedBox` widgets for consistent vertical spacing:
-  - 30px between image card and ID
-  - 10px between text elements
+## 11. Trading Card Game (TCG) Integration
+### TCG Service Class (tcgCards.dart)
+- **Class**: `TCGService` (Static methods)
+  - Provides access to Pokémon Trading Card Game data via TCGDex API
+  - API Base URL: `https://api.tcgdex.net/v2/en`
+  - Documentation: https://api.tcgdex.net/v2/docs
 
-## 8. Code Comments and Explanations
-- Every line in `main.dart` and `graphql.dart` is commented to explain its purpose, including:
-  - Imports and their purposes
-  - Widget structure and hierarchy
-  - State management logic
-  - GraphQL query logic
-  - UI rendering and layout
-  - Singleton pattern implementation
-  - **Style properties**: Detailed comments on every style property explaining:
-    - What each property does (fontSize, color, shadows, etc.)
-    - Why specific values were chosen (e.g., "20 pixels for retro readability")
-    - How properties contribute to the Pokémon theme
+- **Architecture**:
+  - Acts as data layer between UI and TCGDex REST API
+  - Uses static methods (no instantiation needed)
+  - Handles HTTP requests, JSON parsing, and error handling
+  - Returns structured Dart Maps consumable by UI
 
-## 9. Build and Storage Notes
-- Each build overwrites previous build outputs; storage does not increase with every build.
-- `flutter clean` safely removes old build artifacts without affecting source code or assets.
-- Build artifacts are stored in the `build/` directory and are automatically managed by Flutter.
+- **Method**: `searchCardsByPokemon(String pokemonName)`
+  - Searches for all trading cards of a specific Pokémon
+  - Returns: `List<Map<String, dynamic>>` of card objects
+  - Card properties include: id, name, image URL, set info, rarity, HP, types
+  
+  - **Algorithm**:
+    1. Fetch complete list of all TCG sets from API
+    2. Iterate through each set and fetch its card list
+    3. Filter cards by exact name match (case-insensitive)
+    4. Aggregate all matching cards into single list
+    5. Return comprehensive list across all sets
+  
+  - **Performance**:
+    - Makes ~150+ API calls (1 for sets + 1 per set)
+    - Takes 10-30 seconds depending on network
+    - Shows loading spinner during search
+    - Progress logged every 10 sets
+    - All calls are async/non-blocking
+  
+  - **Why This Approach**:
+    - TCGDex API lacks direct "search by Pokémon name" endpoint
+    - `/search`, `/pokemon/{name}` endpoints return 404
+    - `/cards/{name}` returns only ONE card variant
+    - Solution: Iterate through all sets for comprehensive results
+  
+  - **Trade-offs**:
+    - Slower initial load BUT finds cards from ANY generation
+    - User only waits when clicking "VIEW CARDS" button
+    - Could be optimized with caching in future
 
-## 10. String Interpolation
-- Dart uses `$variable` or `${expression}` for string interpolation, allowing dynamic values in UI text.
-- Examples in the app:
-  - `Text('ID: ${pokemon['id']}')` displays the Pokémon ID dynamically
-  - `pokemon['name'].toString().toUpperCase()` converts name to uppercase
+- **Method**: `getCardById(String cardId)`
+  - Fetches detailed card information by unique ID
+  - Returns: `Map<String, dynamic>?` or null if not found
+  - Currently unused but available for future features
+  - Example usage: Show attack info, weaknesses, pricing when tapping card
 
-## 11. Architecture Benefits
-- **Singleton Pattern**: Ensures only one GraphQL client instance exists throughout the app lifecycle.
-- **Separation of Concerns**: GraphQL logic is isolated in `graphql.dart`, making the codebase more maintainable.
-- **Reusability**: The `GraphQLService` can be accessed from any part of the app without passing the client as a parameter.
-- **Helper Methods**: Built-in `query()` and `mutate()` methods simplify GraphQL operations.
-- **Consistent Theming**: Centralized color scheme and Google Fonts integration for uniform styling.
+### TCG Cards Display (main.dart)
+- **Method**: `_showPokemonCards(String pokemonName)`
+  - Opens modal bottom sheet showing trading cards
+  - Uses `FutureBuilder` to handle async card fetching
+  - Shows loading spinner while fetching
+  - Displays error message if fetch fails
+  - Shows "No cards found" if Pokémon has no cards
+  
+- **UI Components**:
+  - **DraggableScrollableSheet**: Resizable bottom sheet (40%-95% screen height)
+  - **Drag Handle**: Visual indicator at top for dragging
+  - **Title**: Shows Pokémon name and card count
+  - **GridView**: 2-column grid of card images
+  - **Card Items**:
+    - High-quality card images (appends `/high.png` to base URL)
+    - Card name and set name below image
+    - Tap to view full-size in dialog with zoom (InteractiveViewer)
+    - Loading spinner while image loads
+    - Error icon if image fails to load
 
-## 12. Google Fonts Integration
-- **Package**: `google_fonts: ^6.3.2` installed via pubspec.yaml
-- **Primary Font**: Press Start 2P - retro 8-bit style perfect for gaming/Pokémon theme
-- **Secondary Font**: Roboto - modern, clean font for secondary information (types)
-- **Usage**:
-  - `GoogleFonts.pressStart2p()` for titles, ID, and retro-styled text
-  - `GoogleFonts.roboto()` for body text and types
-- **Benefits**:
-  - No manual font file downloads required
-  - Automatic caching and optimization
-  - Easy to switch or add new fonts
-  - Consistent rendering across platforms
+- **"VIEW CARDS" Button**:
+  - Elevated button with icon (playing card icon)
+  - Press Start 2P font for retro style
+  - Red background matching Pokémon theme
+  - Located below stats section
+  - Triggers `_showPokemonCards()` on press
 
-## 13. Design Philosophy
-- **Retro Gaming Aesthetic**: Press Start 2P font evokes classic 8-bit Pokémon games
-- **Color Psychology**:
-  - Red: Energy, excitement (Pokémon brand)
-  - Yellow: Joy, optimism (Pikachu, classic branding)
-  - Blue: Trust, stability (balance and contrast)
-  - Green: Nature (Pokémon types, natural world)
-- **Visual Hierarchy**: Larger font sizes and bold weights for important information (name > types > ID)
-- **Depth & Dimension**: Strategic use of shadows on text and containers for modern card-like appearance
-- **Accessibility**: High contrast colors (yellow on red, white on red) for readability
+## 12. Image Assets
+- **Pokémon Sprites**:
+  - Source: PokeAPI official artwork
+  - URL pattern: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{id}.png`
+  - High-quality official artwork for each Pokémon
+  - Dynamically loaded based on Pokémon ID
 
-## 14. Search Functionality with Debounce
-### Overview
-- Implemented a search bar that allows users to search for Pokémon by name
-- Uses debounce technique to optimize performance and reduce API calls
-- Seamlessly switches between two modes: ID navigation and name search
+- **Trading Card Images**:
+  - Source: TCGDex asset CDN
+  - Base URL from API response, appended with `/high.png` for quality
+  - Example: `https://assets.tcgdex.net/en/swsh/swsh3/136/high.png`
+  - Shows actual physical card designs from various TCG sets
 
-### Components Added
-- **TextEditingController** (`_searchController`):
-  - Manages the text input state in the search field
-  - Allows reading, clearing, and listening to changes
-  - Must be disposed of to prevent memory leaks
+## 13. Error Handling
+- **GraphQL Errors**:
+  - Network issues handled with try-catch blocks
+  - Display "No Pokémon found" message on failure
+  - Logs errors to console for debugging
 
-- **Timer** (`_debounce`):
-  - Implements debounce functionality
-  - Delays search execution by 500ms after user stops typing
-  - Cancels previous timers if user continues typing
+- **TCG API Errors**:
+  - Individual set fetch failures don't break entire search
+  - Continues to next set on error
+  - Logs detailed error messages and stack traces
+  - Returns empty list if major error occurs
 
-- **Search Query State** (`_searchQuery`):
-  - Stores the current active search term
-  - Empty string = ID navigation mode
-  - Non-empty string = search mode
+- **Image Loading Errors**:
+  - Shows error icon if card image fails to load
+  - Loading indicator while images download
+  - Fallback UI for missing images
 
-### Debounce Implementation
-**Purpose**: Prevent excessive API calls while user is typing
+## 14. Development Notes
+- **State Management**: Uses Provider for theme state, local state for UI updates
+- **Performance**: Debounced search prevents excessive API calls
+- **Responsiveness**: UI updates smoothly with async operations
+- **Accessibility**: Theme support for user preferences
+- **Scalability**: Service classes separate concerns (data fetching vs UI)
 
-**How it works**:
-1. User types a character in the search field
-2. `_onSearchChanged()` is called
-3. If a timer is already active, cancel it (user is still typing)
-4. Create a new 500ms timer
-5. If 500ms passes without new input, update `_searchQuery` and trigger search
-6. If user types again before 500ms, restart from step 2
+## 15. Future Enhancements
+- **Caching**: Store TCG card search results to avoid repeated API calls
+- **Favorites**: Allow users to save favorite Pokémon
+- **Advanced Filters**: Filter cards by type, rarity, set
+- **Card Details**: Show attack info, weaknesses, pricing when tapping cards
+- **Offline Mode**: Cache Pokémon data for offline browsing
+- **Animations**: Add transitions and loading animations
+- **Search History**: Remember recent searches
 
-**Benefits**:
-- Reduces API calls from potentially dozens to just one
-- Improves app performance and reduces server load
-- Better user experience (no lag from constant queries)
-- Network efficiency (especially important on mobile data)
-
-### Search Methods
-- **Function**: `searchPokemonByName(String name, GraphQLClient client)`
-  - Searches for Pokémon using case-insensitive pattern matching
-  - Uses GraphQL `_ilike` operator (PostgreSQL)
-  - Pattern: `%$name%` allows partial matching (e.g., "pika" matches "pikachu")
-  - Returns first matching result (limit: 1)
-  - Query structure identical to `fetchPokemon()` for consistency
-
-### Search Bar UI Design
-- **TextField Styling**:
-  - Rounded pill shape (30px border radius)
-  - White background with colored borders
-  - Red border when not focused (2px width)
-  - Blue border when focused (2px width)
-  - 16px padding on all sides
-
-- **Icons**:
-  - **Prefix Icon**: Search icon (magnifying glass) in red
-  - **Suffix Icon**: Clear button (X icon) that:
-    - Only appears when text is present
-    - Clears the search field
-    - Resets to ID navigation mode
-    - Red color matching theme
-
-- **Placeholder**:
-  - Text: "Search Pokémon..."
-  - Font: Roboto (readable, modern)
-  - Color: Grey[600] for subtle hint
-
-### Smart Mode Switching
-- **Implementation**: Conditional `future` in `FutureBuilder`
-  ```dart
-  future: _searchQuery.isEmpty
-      ? fetchPokemon(_counter, client)      // ID Navigation Mode
-      : searchPokemonByName(_searchQuery, client)  // Search Mode
-  ```
-
-- **ID Navigation Mode** (default):
-  - Triggered when search field is empty
-  - Uses counter to fetch Pokémon by ID
-  - Floating action button increments counter
-  - Sequential browsing experience
-
-- **Search Mode**:
-  - Triggered when user enters search text
-  - Uses debounced query to search by name
-  - Floating action button still works (increments counter for when search is cleared)
-  - Results update automatically after debounce delay
-
-### Layout Changes
-- **Column Structure**:
-  - Search bar at the top (Padding with 16px spacing)
-  - Pokémon display area below (Expanded widget)
-  - Floating action button remains in bottom-right
-
-- **Responsive Design**:
-  - Search bar takes fixed space at top
-  - Pokémon display expands to fill remaining space
-  - Works on various screen sizes
-
-### Memory Management
-- **dispose() Method**:
-  - Disposes `_searchController` to free resources
-  - Cancels any pending debounce timer
-  - Prevents memory leaks when widget is removed
-  - Critical for app performance
-
-### User Experience Features
-1. **Visual Feedback**:
-   - Border color changes on focus (red → blue)
-   - Clear button appears/disappears dynamically
-   - Loading spinner during search
-   - "No Pokémon found" message for failed searches
-
-2. **Intuitive Interaction**:
-   - Type to search, no search button needed
-   - Clear button for quick reset
-   - Automatic search after short pause
-   - Seamless mode switching
-
-3. **Performance Optimizations**:
-   - Debounce reduces server load
-   - Case-insensitive search (`toLowerCase()`)
-   - Whitespace trimming (`trim()`)
-   - Single result limit for faster queries
-
-## 15. Dependencies Update
-### Added Dependency
-- `dart:async` - Core Dart library for asynchronous programming
-  - Required for `Timer` class used in debounce implementation
-  - No installation needed (part of Dart SDK)
-  - Imported with: `import 'dart:async';`
-
-### Complete Dependencies List
-```yaml
-dependencies:
-  flutter:
-    sdk: flutter
-  graphql_flutter: ^5.0.1    # GraphQL API integration
-  http: ^1.1.0               # HTTP requests
-  google_fonts: ^6.3.2       # Custom Google Fonts
-  cupertino_icons: ^1.0.8    # iOS-style icons
-
-dev_dependencies:
-  flutter_test:
-    sdk: flutter
-  flutter_lints: ^5.0.0      # Linting rules
+## 16. File Structure
+```
+lib/
+├── main.dart           # Main app, UI, Pokémon display, navigation
+├── graphql.dart        # GraphQL service singleton
+├── tcgCards.dart       # TCG API service for trading cards
+├── app_theme.dart      # Light/dark theme definitions
+└── theme_provider.dart # Theme state management
 ```
 
-## 16. Code Documentation Standards
-### Comment Structure
-All code includes comprehensive inline comments explaining:
-- **What**: What each line/block does
-- **Why**: Reasoning behind implementation choices
-- **How**: Step-by-step process explanations (especially for debounce)
+## 17. Running the App
+1. Ensure Flutter SDK is installed
+2. Run `flutter pub get` to install dependencies
+3. Connect a device or start an emulator
+4. Run `flutter run` to launch the app
+5. Search for Pokémon by name or browse by ID
+6. Click "VIEW CARDS" to see trading card collection
+7. Toggle light/dark mode with switch in AppBar
 
-### Special Comment Blocks
-- **DEBOUNCE EXPLANATION**: Multi-line comment block explaining the debounce pattern with numbered steps
-- **SEARCH BAR SECTION**: Detailed explanation of TextField features and styling
-- **SMART SWITCHING**: Explanation of conditional logic for mode switching
-- **HOW IT WORKS**: Step-by-step breakdowns for complex logic
-
-### Documentation Style
-- Variable declarations include purpose and usage
-- Methods have function-level documentation
-- Complex logic has inline step-by-step comments
-- UI elements explain both technical properties and design choices
-- Performance considerations are noted where relevant
-
-## 17. Future Enhancements (Potential)
-- Display actual Pokémon sprites instead of placeholder images
-- Add more search filters (by type, generation, etc.)
-- Implement pagination for search results
-- Add favorite/bookmark functionality
-- Cache search results for offline access
-- Add animations for Pokémon transitions
-- Implement previous/next buttons for navigation
-- Add detailed Pokémon information screen
-- Support multiple language searches
-
-## 18. Base Stats Display Implementation
-### Overview
-- Added complete base statistics display for each Pokémon
-- Shows all 6 core stats: HP, Attack, Defense, Special Attack, Special Defense, Speed
-- Includes total stats calculation (sum of all base stats)
-- Visual progress bars for easy stat comparison
-- Color-coded by stat type for quick recognition
-
-### GraphQL Query Updates
-Both `fetchPokemon()` and `searchPokemonByName()` queries now include:
-```graphql
-pokemonstats{
-  base_stat
-  stat{
-    name
-  }
-}
-```
-
-**Data Structure:**
-- `base_stat`: Integer value (0-255 typical range)
-- `stat.name`: String identifier (e.g., "hp", "attack", "defense", "special-attack", "special-defense", "speed")
-
-### Stats Extraction and Processing
-**Step 1: Extract stats from nested GraphQL response**
-- Navigates through: `pokemons[0] -> pokemonstats`
-- Returns list of stat objects
-
-**Step 2: Organize stats in a Map**
-```dart
-Map<String, int> statsMap = {};
-```
-- Key: stat name (string)
-- Value: stat value (integer)
-- Purpose: Easy access by name instead of array iteration
-- Example: `statsMap['hp']` returns HP value directly
-
-**Step 3: Calculate total stats**
-```dart
-int totalStats = 0;
-for (var stat in stats) {
-  totalStats += baseStat;
-}
-```
-- Accumulates sum of all 6 base stats
-- Typical ranges:
-  - Low: 180-200 (Shedinja: 236)
-  - Average: 400-500 (most Pokémon)
-  - High: 600-680 (legendary Pokémon)
-  - Maximum: 780 (Eternamax form)
-
-### UI Components
-
-#### Stats Card Container
-- **Background**: White for clean readability
-- **Border Radius**: 15px for modern rounded look
-- **Shadow**: Grey shadow with 30% opacity, 2px spread, 5px blur, 2px down offset
-- **Padding**: 16px on all sides
-- **Layout**: Column with title, 6 stat rows, divider, total row
-
-#### Stats Title
-- **Text**: "BASE STATS"
-- **Font**: Press Start 2P (retro gaming style)
-- **Size**: 14px
-- **Color**: Red (Pokémon theme)
-- **Position**: Centered at top of card
-
-#### Individual Stat Rows
-Created using helper method `_buildStatRow()`:
-- **Parameters**:
-  - `statName`: Display label (HP, ATK, DEF, SpA, SpD, SPE)
-  - `statValue`: Numeric value (0-255)
-  - `color`: Progress bar color
-
-- **Layout**: Row with 3 components
-  1. **Stat Name** (left) - Expanded, Roboto font, 16px, medium weight
-  2. **Stat Value** (center) - Bold, 16px, black color
-  3. **Progress Bar** (right) - Visual representation
-
-### Progress Bar Implementation
-**Container Properties:**
-- Height: 8px (thin horizontal bar)
-- Width: 100px (fixed for consistent comparison)
-- Background: Grey[300] (unfilled portion)
-- Border Radius: 4px (rounded corners)
-
-**FractionallySizedBox Widget:**
-- **Purpose**: Fills portion of container based on stat value
-- **Alignment**: centerLeft (fills from left to right)
-- **widthFactor Calculation**: `statValue / 255`
-  - 255 is max possible stat value
-  - Results in 0.0 to 1.0 (0% to 100%)
-  - Example: HP 45 → 45/255 = 0.176 (17.6% filled)
-
-**Color Coding by Stat Type:**
-- **HP**: Red (health/vitality)
-- **Attack**: Orange (physical power)
-- **Defense**: Yellow[700] (protection/armor)
-- **Special Attack**: Blue (special/magical power)
-- **Special Defense**: Green (special resistance/nature)
-- **Speed**: Pink (agility/quickness)
-
-### Total Stats Display
-- **Position**: Bottom of stats card, below divider
-- **Layout**: Row with space between label and value
-- **Label**: "TOTAL" in 12px Press Start 2P font
-- **Value**: Sum of all stats in 14px Press Start 2P font
-- **Color**: Purple (special emphasis, different from individual stats)
-
-### ScrollView Implementation
-- **Widget**: SingleChildScrollView wraps entire Pokémon display
-- **Purpose**: Allows scrolling when content exceeds screen height
-- **Benefit**: Accommodates stats card without layout overflow
-- **User Experience**: Smooth vertical scrolling on all screen sizes
-
-### Helper Method: `_buildStatRow()`
-**Purpose**: Reusable widget builder for stat rows
-
-**Parameters:**
-1. `String statName` - Display label
-2. `int statValue` - Numeric value
-3. `Color color` - Progress bar color
-
-**Returns**: Row widget with complete stat display
-
-**Advantages:**
-- Code reusability (6 stats use same method)
-- Consistency across all stat displays
-- Easy to maintain and modify
-- Reduces code duplication
-
-### Design Decisions
-
-**Why Map for Stats?**
-- Direct access: O(1) time complexity
-- No iteration needed for specific stat
-- Clean code: `statsMap['hp']` vs looping through array
-- Order control: Display stats in desired order regardless of API response order
-
-**Why 255 as Max Value?**
-- Standard maximum for Pokémon base stats in games
-- Most stats range 1-255
-- Provides accurate percentage representation
-- Matches official Pokémon stat system
-
-**Why Different Colors for Each Stat?**
-- **Visual Recognition**: Users quickly identify stat types
-- **Accessibility**: Color coding helps distinguish stats at a glance
-- **Game Authenticity**: Matches Pokémon game conventions
-- **User Experience**: Easier to compare similar stats across different Pokémon
-
-**Why Progress Bars?**
-- **Visual Comparison**: Easier than comparing numbers
-- **Intuitive**: Length represents strength
-- **Engagement**: More visually appealing than numbers alone
-- **Quick Assessment**: See Pokémon strengths/weaknesses instantly
-
-### Null Safety
-All stat extraction uses null-safe operators:
-```dart
-statsMap['hp'] ?? 0  // Returns 0 if HP stat not found
-```
-- Prevents crashes if API response missing data
-- Displays 0 for missing stats (edge cases)
-- Maintains app stability
-
-### Performance Considerations
-- **Single Loop**: Stats extracted and totaled in one iteration
-- **Efficient Storage**: Map provides O(1) access time
-- **Lazy Building**: Stats only calculated when Pokémon data available
-- **No Re-renders**: Stats calculated once per Pokémon load
-
-### Integration with Existing Features
-- **Works with Search**: Stats display for both ID navigation and search results
-- **Works with Debounce**: Stats load after debounced search
-- **Responsive**: Adapts to different screen sizes
-- **Scrollable**: Doesn't break layout on small screens
+## 18. API Documentation
+- **PokeAPI GraphQL**: https://beta.pokeapi.co/graphql/console/
+- **TCGDex API**: https://api.tcgdex.net/v2/docs
+- **PokeAPI Sprites**: https://github.com/PokeAPI/sprites
