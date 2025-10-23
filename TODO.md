@@ -74,7 +74,7 @@ X - Separar modelos, DTOs y mapeos correctamente.
 
 X - Filtrar Pokémon por nombre.
 
-X - Agregar dropdown de filtros: tipo, generación, región, habilidad o poder.
+I - Agregar dropdown de filtros: tipo, generación, región, habilidad o poder.
 
 X - Ordenar por nombre, número o poder.
 

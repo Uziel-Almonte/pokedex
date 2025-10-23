@@ -85,6 +85,11 @@ class _MyHomePageState extends State<PokeHomePage> {
   // When empty, the app shows Pokémon by ID; when filled, it searches by name
   String _searchQuery = '';
 
+  // FILTER VARIABLES
+  String? _selectedType;
+  int? _selectedGeneration;
+  String? _selectedAbility;
+
   // Add initState to listen to controller changes so the suffix icon updates immediately
   @override
   void initState() {
@@ -152,18 +157,43 @@ class _MyHomePageState extends State<PokeHomePage> {
   }
 
   Future<List<Map<String, dynamic>>> _fetchPokemonList(GraphQLClient client) async {
+    // Construir condiciones de filtro dinámicamente
+    final whereConditions = <String>[];
+
+    if (_selectedType != null) {
+      whereConditions.add('pokemontypes: {type: {name: {_eq: "$_selectedType"}}}');
+    }
+
+    if (_selectedGeneration != null) {
+      whereConditions.add('pokemonspecy: {generation_id: {_eq: $_selectedGeneration}}');
+    }
+
+    if (_selectedAbility != null) {
+      whereConditions.add('pokemonabilities: {ability: {name: {_ilike: "%$_selectedAbility%"}}}');
+    }
+
+    final whereClause = whereConditions.isEmpty
+        ? ''
+        : 'where: {${whereConditions.join(', ')}}, ';
+
     final query = '''
     query GetPokemonList {
-      pokemon(limit: 20, offset: ${(_counter - 1) * 20}) { 
+      pokemon(${whereClause}limit: 20, offset: ${(_counter - 1) * 20}) { 
         id 
         name 
         pokemon_species_id 
         pokemonspecy { 
-          name 
+          name
+          generation_id
         }
         pokemontypes {
           type {
             name 
+          }
+        }
+        pokemonabilities {
+          ability {
+            name
           }
         }
       }
@@ -439,36 +469,126 @@ class _MyHomePageState extends State<PokeHomePage> {
     showDialog(
       context: context,
       builder: (BuildContext context) {
-        return AlertDialog(
-          title: Text(
-            'Filter Options',
-            style: GoogleFonts.pressStart2p(fontSize: 14),
-          ),
-          content: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              ListTile(
-                title: const Text('By Type'),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Implement type filter
-                },
+        return StatefulBuilder(
+          builder: (context, setDialogState) {
+            return AlertDialog(
+              title: Text(
+                'Filter Options',
+                style: GoogleFonts.pressStart2p(fontSize: 12),
               ),
-              ListTile(
-                title: const Text('By Generation'),
-                onTap: () {
-                  Navigator.pop(context);
-                  // Implement generation filter
-                },
+              content: SingleChildScrollView(
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // FILTRO POR TIPO
+                    Text('Type:', style: GoogleFonts.roboto(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: [
+                        'normal', 'fire', 'water', 'electric', 'grass', 'ice',
+                        'fighting', 'poison', 'ground', 'flying', 'psychic',
+                        'bug', 'rock', 'ghost', 'dragon', 'dark', 'steel', 'fairy'
+                      ].map((type) {
+                        final isSelected = _selectedType == type;
+                        return FilterChip(
+                          label: Text(type.toUpperCase(), style: const TextStyle(fontSize: 10)),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setDialogState(() {
+                              _selectedType = selected ? type : null;
+                            });
+                          },
+                          selectedColor: Colors.red.withOpacity(0.3),
+                        );
+                      }).toList(),
+                    ),
+                    const Divider(height: 32),
+
+                    // FILTRO POR GENERACIÓN
+                    Text('Generation:', style: GoogleFonts.roboto(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    Wrap(
+                      spacing: 8,
+                      runSpacing: 8,
+                      children: List.generate(9, (index) {
+                        final gen = index + 1;
+                        final isSelected = _selectedGeneration == gen;
+                        return FilterChip(
+                          label: Text('Gen $gen'),
+                          selected: isSelected,
+                          onSelected: (selected) {
+                            setDialogState(() {
+                              _selectedGeneration = selected ? gen : null;
+                            });
+                          },
+                          selectedColor: Colors.blue.withOpacity(0.3),
+                        );
+                      }),
+                    ),
+                    const Divider(height: 32),
+
+                    // FILTRO POR HABILIDAD
+                    Text('Ability:', style: GoogleFonts.roboto(fontWeight: FontWeight.bold)),
+                    const SizedBox(height: 8),
+                    TextField(
+                      decoration: InputDecoration(
+                        hintText: 'Enter ability name',
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        suffixIcon: _selectedAbility != null
+                            ? IconButton(
+                                icon: const Icon(Icons.clear, size: 18),
+                                onPressed: () {
+                                  setDialogState(() {
+                                    _selectedAbility = null;
+                                  });
+                                },
+                              )
+                            : null,
+                      ),
+                      onChanged: (value) {
+                        setDialogState(() {
+                          _selectedAbility = value.isEmpty ? null : value;
+                        });
+                      },
+                    ),
+                  ],
+                ),
               ),
-            ],
-          ),
-          actions: [
-            TextButton(
-              onPressed: () => Navigator.pop(context),
-              child: const Text('Close'),
-            ),
-          ],
+              actions: [
+                // Botón para limpiar todos los filtros
+                TextButton(
+                  onPressed: () {
+                    setDialogState(() {
+                      _selectedType = null;
+                      _selectedGeneration = null;
+                      _selectedAbility = null;
+                    });
+                  },
+                  child: const Text('Clear All'),
+                ),
+                // Botón para aplicar filtros
+                ElevatedButton(
+                  onPressed: () {
+                    setState(() {
+                      // Triggers rebuild with new filters
+                    });
+                    Navigator.pop(context);
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text('Apply'),
+                ),
+              ],
+            );
+          },
         );
       },
     );
