@@ -14,6 +14,8 @@ import 'package:provider/provider.dart';
 // Import the TCG service for Pokémon trading cards
 import 'tcgCards.dart';
 
+import 'home.dart' as home_page;
+
 
 const darkMode = false;
 
@@ -51,27 +53,28 @@ class MyApp extends StatelessWidget {
         theme: AppTheme.lightTheme,
         darkTheme: AppTheme.darkTheme,
         themeMode: appThemeState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: const MyHomePage(title: 'Pokedex'), // Set the home page
+      home: const home_page.PokeHomePage(title: 'Pokedex'), // Set the home page
     );
   }
 }
 
 // Home page widget, which is stateful
-class MyHomePage extends StatefulWidget {
+class PokeDetailPage extends StatefulWidget {
   // Constructor for MyHomePage, requires a title
-  const MyHomePage({super.key, required this.title});
+  const PokeDetailPage({super.key, required this.title, this.initialPokemonId});
 
   // Title field for the home page
   final String title;
+  final int? initialPokemonId;
 
   // Create the state for this widget
   @override
-  State<MyHomePage> createState() => _MyHomePageState();
+  State<PokeDetailPage> createState() => _MyHomePageState();
 }
 
 
 // State class for MyHomePage
-class _MyHomePageState extends State<MyHomePage> {
+class _MyHomePageState extends State<PokeDetailPage> {
   // Counter to keep track of the current Pokémon ID
   // This increments when the user presses the floating action button
   int _counter = 1;
@@ -95,6 +98,7 @@ class _MyHomePageState extends State<MyHomePage> {
   @override
   void initState() {
     super.initState();
+    _counter = widget.initialPokemonId ?? 1;
     // When the controller text changes we call setState() so widgets that depend on
     // _searchController.text (like the clear button) rebuild immediately instead of
     // waiting for the debounce to complete.
@@ -815,16 +819,6 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
         ],
-      ),
-      // Floating action button to increment the counter
-      floatingActionButton: FloatingActionButton(
-        onPressed: _incrementCounter, // Call increment function on press
-        backgroundColor: Colors.red, // Set button background to Pokémon red color
-        tooltip: 'Next Pokémon', // Tooltip text shown when user long-presses button
-        child: const Icon(
-          Icons.arrow_forward, // Use forward arrow icon to indicate "next" action
-          color: Colors.white, // Set icon color to white for contrast against red background
-        ),
       ),
     );
   }
