@@ -85,10 +85,17 @@ class _MyHomePageState extends State<PokeHomePage> {
   // When empty, the app shows Pokémon by ID; when filled, it searches by name
   String _searchQuery = '';
 
-  // FILTER VARIABLES
-  String? _selectedType;
-  int? _selectedGeneration;
-  String? _selectedAbility;
+  // ============================================================================
+  // VARIABLES DE ESTADO PARA EL SISTEMA DE FILTROS
+  // ============================================================================
+  // Estas variables almacenan los criterios de filtrado seleccionados por el usuario.
+  // Se inicializan como null, lo que significa "sin filtro aplicado".
+  //
+  // Cuando el usuario selecciona un filtro en el diálogo, estas variables se actualizan
+  // y se usa setState() para reconstruir la interfaz con los resultados filtrados.
+  String? _selectedType;        // Tipo de Pokémon seleccionado (fire, water, grass, etc.)
+  int? _selectedGeneration;     // Generación seleccionada (1-9)
+  String? _selectedAbility;     // Nombre de habilidad para buscar (ej: "overgrow")
 
   // Add initState to listen to controller changes so the suffix icon updates immediately
   @override

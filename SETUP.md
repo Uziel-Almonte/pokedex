@@ -83,7 +83,92 @@ This document details the setup and implementation steps for the Pokedex app, in
     4. If 500ms passes without input, execute search
     5. If user types again, restart from step 2
 
-## 8. Theme System
+## 8. Filter System
+- **Filter Button**:
+  - Red circular button with filter icon located next to the search bar
+  - Opens a dialog with multiple filtering options
+  - Filters are applied dynamically to the Pokémon list query
+
+- **Filter Dialog** (`_showFilterDialog()`):
+  - **Type Filter**: 
+    - 18 filter chips for all Pokémon types (Normal, Fire, Water, Electric, Grass, Ice, Fighting, Poison, Ground, Flying, Psychic, Bug, Rock, Ghost, Dragon, Dark, Steel, Fairy)
+    - Single selection - selecting a type filters Pokémon of that type only
+    - Uses red selection color with 30% opacity
+  - **Generation Filter**:
+    - 9 filter chips for Generations 1-9
+    - Single selection - filters Pokémon from the selected generation
+    - Uses blue selection color with 30% opacity
+  - **Ability Filter**:
+    - Text input field for searching by ability name
+    - Uses case-insensitive pattern matching (ILIKE operator)
+    - Clear button (X icon) appears when text is entered
+  - **Dialog Actions**:
+    - "Clear All" button: Removes all applied filters
+    - "Apply" button: Closes dialog and applies filters to the list
+
+- **State Variables**:
+  - `_selectedType`: Stores the selected type filter (nullable String)
+  - `_selectedGeneration`: Stores the selected generation (nullable int, 1-9)
+  - `_selectedAbility`: Stores the ability search term (nullable String)
+  - All initialize as null (no filter applied)
+
+- **Filter Implementation** (`_fetchPokemonList()`):
+  - Dynamically builds GraphQL WHERE clause based on active filters
+  - Type filter: `pokemontypes: {type: {name: {_eq: "$_selectedType"}}}`
+  - Generation filter: `pokemonspecy: {generation_id: {_eq: $_selectedGeneration}}`
+  - Ability filter: `pokemonabilities: {ability: {name: {_ilike: "%$_selectedAbility%"}}}`
+  - Multiple filters can be combined (AND logic)
+  - Returns up to 20 results per page with pagination support
+
+## 9. Gradient System for Pokémon Types
+- **PokeSelect Widget** (reusable_widgets/PokeSelect.dart):
+  - Custom reusable widget for displaying Pokémon cards in the list
+  - Features dynamic gradient backgrounds based on Pokémon type(s)
+
+- **Type Color Map**:
+  - Defines official Pokémon colors for all 18 types
+  - Colors match those used in official games and trading cards
+  - Examples:
+    - Fire: Orange/Red (#F08030)
+    - Water: Blue (#6890F0)
+    - Grass: Green (#78C850)
+    - Electric: Yellow (#F8D030)
+    - Psychic: Pink (#F85888)
+    - Dragon: Purple (#7038F8)
+
+- **Gradient Generation** (`_getTypeGradient()`):
+  - **Single-type Pokémon**: 
+    - Creates gradient of same color with varying opacity (70%, 100%, 90%)
+    - Diagonal gradient from top-left to bottom-right
+    - Example: Charmander (Fire) → Light orange to darker orange gradient
+  - **Dual-type Pokémon**:
+    - Creates diagonal gradient transitioning between both type colors
+    - Visually represents the dual nature of the Pokémon
+    - Example: Bulbasaur (Grass/Poison) → Green to purple gradient
+  - **Unknown/Invalid types**:
+    - Fallback to neutral grey gradient
+    - Ensures UI consistency even with missing data
+
+- **Visual Benefits**:
+  - Each Pokémon card has a unique appearance based on its type(s)
+  - Provides instant visual recognition of Pokémon types
+  - Creates depth and texture without additional images
+  - White text with black shadows ensures readability over any gradient
+
+## 10. Navigation and Page Structure
+- **Home Page** (home.dart):
+  - Displays grid/list of Pokémon with search and filter options
+  - Shows Pokémon cards with gradients, sprites, names, and types
+  - Pagination with previous/next buttons
+  - Tapping a card navigates to detail page
+
+- **Detail Page** (main.dart - PokeDetailPage):
+  - Shows comprehensive information for a single Pokémon
+  - Includes base stats, TCG cards, and detailed information
+  - Accepts `initialPokemonId` parameter for navigation
+  - Previous/next buttons for browsing adjacent Pokémon
+
+## 11. Theme System
 - **Theme Provider** (theme_provider.dart):
   - `AppThemeState` class extends `ChangeNotifier` for state management
   - Manages dark/light mode preference
@@ -102,7 +187,7 @@ This document details the setup and implementation steps for the Pokedex app, in
   - Switch component toggles between light/dark themes
   - Persists across app sessions
 
-## 9. UI Design & Styling (Pokémon Theme)
+## 12. UI Design & Styling (Pokémon Theme)
 ### Theme Configuration
 - **App Theme**:
   - Color scheme: Red seed color (Pokémon primary color)
@@ -148,7 +233,7 @@ This document details the setup and implementation steps for the Pokedex app, in
   - Color: Dark green (`Colors.green[700]`) - nature/type theme
   - Weight: Semi-bold (w600)
 
-## 10. Base Stats Display
+## 13. Base Stats Display
 - **Stats Section**:
   - Shows all 6 Pokémon base statistics in a card container
   - Stats displayed: HP, Attack, Defense, Special Attack, Special Defense, Speed
@@ -174,7 +259,7 @@ This document details the setup and implementation steps for the Pokedex app, in
   - Creates consistent layout for all stats
   - Parameters: stat name, value, and color for visual coding
 
-## 11. Trading Card Game (TCG) Integration
+## 14. Trading Card Game (TCG) Integration
 ### TCG Service Class (tcgCards.dart)
 - **Class**: `TCGService` (Static methods)
   - Provides access to Pokémon Trading Card Game data via TCGDex API
@@ -250,7 +335,7 @@ This document details the setup and implementation steps for the Pokedex app, in
   - Located below stats section
   - Triggers `_showPokemonCards()` on press
 
-## 12. Image Assets
+## 15. Image Assets
 - **Pokémon Sprites**:
   - Source: PokeAPI official artwork
   - URL pattern: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{id}.png`
@@ -263,7 +348,7 @@ This document details the setup and implementation steps for the Pokedex app, in
   - Example: `https://assets.tcgdex.net/en/swsh/swsh3/136/high.png`
   - Shows actual physical card designs from various TCG sets
 
-## 13. Error Handling
+## 16. Error Handling
 - **GraphQL Errors**:
   - Network issues handled with try-catch blocks
   - Display "No Pokémon found" message on failure
@@ -280,33 +365,42 @@ This document details the setup and implementation steps for the Pokedex app, in
   - Loading indicator while images download
   - Fallback UI for missing images
 
-## 14. Development Notes
-- **State Management**: Uses Provider for theme state, local state for UI updates
+## 17. Development Notes
+- **State Management**: Uses Provider for theme state, local state for UI updates and filters
 - **Performance**: Debounced search prevents excessive API calls
 - **Responsiveness**: UI updates smoothly with async operations
 - **Accessibility**: Theme support for user preferences
 - **Scalability**: Service classes separate concerns (data fetching vs UI)
+- **Visual Design**: Type-based gradients provide intuitive visual feedback
 
-## 15. Future Enhancements
+## 18. Future Enhancements
 - **Caching**: Store TCG card search results to avoid repeated API calls
 - **Favorites**: Allow users to save favorite Pokémon
-- **Advanced Filters**: Filter cards by type, rarity, set
+- **Advanced Filters**: 
+  - Filter by stat ranges (HP > 100, Speed < 50)
+  - Multiple type selection (AND/OR logic)
+  - Filter by name length, evolution stage
+- **Filter Persistence**: Remember applied filters between sessions
 - **Card Details**: Show attack info, weaknesses, pricing when tapping cards
 - **Offline Mode**: Cache Pokémon data for offline browsing
 - **Animations**: Add transitions and loading animations
 - **Search History**: Remember recent searches
+- **Filter Presets**: Save and load custom filter combinations
 
-## 16. File Structure
+## 19. File Structure
 ```
 lib/
-├── main.dart           # Main app, UI, Pokémon display, navigation
-├── graphql.dart        # GraphQL service singleton
-├── tcgCards.dart       # TCG API service for trading cards
-├── app_theme.dart      # Light/dark theme definitions
-└── theme_provider.dart # Theme state management
+├── main.dart                    # Main app entry, detail page UI
+├── home.dart                    # Home page with list, search, filters
+├── graphql.dart                 # GraphQL service singleton
+├── tcgCards.dart                # TCG API service for trading cards
+├── app_theme.dart               # Light/dark theme definitions
+├── theme_provider.dart          # Theme state management
+└── reusable_widgets/
+    └── PokeSelect.dart          # Reusable Pokémon card widget with gradients
 ```
 
-## 17. Running the App
+## 20. Running the App
 1. Ensure Flutter SDK is installed
 2. Run `flutter pub get` to install dependencies
 3. Connect a device or start an emulator
@@ -315,7 +409,7 @@ lib/
 6. Click "VIEW CARDS" to see trading card collection
 7. Toggle light/dark mode with switch in AppBar
 
-## 18. API Documentation
+## 21. API Documentation
 - **PokeAPI GraphQL**: https://beta.pokeapi.co/graphql/console/
 - **TCGDex API**: https://api.tcgdex.net/v2/docs
 - **PokeAPI Sprites**: https://github.com/PokeAPI/sprites
