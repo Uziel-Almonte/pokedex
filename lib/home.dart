@@ -11,6 +11,7 @@ import 'theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'reusable_widgets/PokeSelect.dart';
 import 'main.dart' as main_page;
+import 'package:pokedex/queries.dart';
 
 class PokeHomePage extends StatefulWidget {
   // Constructor for MyHomePage, requires a title
@@ -163,83 +164,6 @@ class _MyHomePageState extends State<PokeHomePage> {
     });
   }
 
-  Future<List<Map<String, dynamic>>> _fetchPokemonList(GraphQLClient client) async {
-    // Construir condiciones de filtro dinámicamente
-    final whereConditions = <String>[];
-
-    if (_selectedType != null) {
-      whereConditions.add('pokemontypes: {type: {name: {_eq: "$_selectedType"}}}');
-    }
-
-    if (_selectedGeneration != null) {
-      whereConditions.add('pokemonspecy: {generation_id: {_eq: $_selectedGeneration}}');
-    }
-
-    if (_selectedAbility != null) {
-      whereConditions.add('pokemonabilities: {ability: {name: {_ilike: "%$_selectedAbility%"}}}');
-    }
-
-    final query = '''
-    query GetPokemonList {
-      pokemon(limit: 20, offset: ${(_counter - 1) * 20}) { 
-        id 
-        name 
-        pokemontypes {
-          type {
-            name 
-          }
-        }
-        pokemonabilities {
-          ability {
-            name
-          }
-        }
-      }
-    }
-  ''';
-    // Execute the query using the GraphQL client
-    final result = await client.query(QueryOptions(document: gql(query)));
-    // Extract the species data from the result
-    final pokemons = result.data?['pokemon'] as List<dynamic>?;
-    // Return the first species if available, otherwise null
-    return pokemons?.cast<Map<String, dynamic>>() ?? [];
-  }
-
-  // Function to search Pokémon by name using GraphQL
-  // Uses case-insensitive matching with ILIKE operator
-  // Returns the first matching Pokémon found (limit: 1)
-  // Now includes base stats information
-  Future<List<Map<String, dynamic>>> searchPokemonByName(String name, GraphQLClient client) async {
-    // GraphQL query with WHERE clause for name matching
-    // _ilike: case-insensitive pattern matching (PostgreSQL operator)
-    // %$name%: matches any string containing the search term
-    // Example: searching "pika" will match "pikachu"
-    final query = '''
-    query SearchPokemonByName {
-      pokemon(where: {name: {_ilike: "%$name%"}}, limit: 20) {
-        id
-        name
-        pokemontypes {
-          type {
-            name
-          }
-        }
-        pokemonabilities {
-          ability {
-            name
-          }
-        }
-      }
-    }
-  ''';
-    // Execute the query using the GraphQL client
-    final result = await client.query(QueryOptions(document: gql(query)));
-    // Extract the species data from the result
-    final pokemons = result.data?['pokemon'] as List<dynamic>?;
-    // Return the first species if available, otherwise null
-    return pokemons?.cast<Map<String, dynamic>>() ?? [];
-  }
-
   // Build method returns the widget tree for the home page
   @override
   Widget build(BuildContext context) {
@@ -367,7 +291,7 @@ class _MyHomePageState extends State<PokeHomePage> {
           Expanded(
             child: FutureBuilder<List<Map<String, dynamic>>>(
               future: _searchQuery.isEmpty // si esta vacio, carga las listas normales
-                  ? _fetchPokemonList(client)
+                  ? fetchPokemonList(client, _selectedType, _selectedGeneration, _selectedAbility, _counter)
                   : searchPokemonByName(_searchQuery, client), // si no esta vacia, carga por nombre
               builder: (context, snapshot) {
                 if (snapshot.connectionState == ConnectionState.waiting) {

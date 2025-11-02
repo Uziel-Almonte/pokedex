@@ -48,7 +48,7 @@ X - Favorito persiste en < 150 ms y se refleja al volver a la lista.
 
 X - Mostrar matchups (debilidades, resistencias, inmunidades x4–x0).
 
-X - Mostrar peso, altura y egg groups.
+O - Mostrar peso, altura y egg groups.
 
 X - Variantes/formas (dropdown → Alola, Galar, etc.).
 

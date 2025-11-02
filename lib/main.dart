@@ -10,11 +10,14 @@ import 'graphql.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'theme_provider.dart';
 import 'package:provider/provider.dart';
+import 'package:pie_chart/pie_chart.dart';
 
 // Import the TCG service for Pokémon trading cards
 import 'tcgCards.dart';
 
 import 'home.dart' as home_page;
+
+import 'package:pokedex/queries.dart';
 
 
 const darkMode = false;
@@ -72,6 +75,25 @@ class PokeDetailPage extends StatefulWidget {
   State<PokeDetailPage> createState() => _MyHomePageState();
 }
 
+Map<String, double> _buildGenderMap(int? genderRate) {
+  if (genderRate == null || genderRate == -1) {
+    // Genderless or unknown
+    return {"Genderless": 1.0};
+  } else if (genderRate == 0) {
+    // All male
+    return {"Male": 1.0};
+  } else if (genderRate == 8) {
+    // All female
+    return {"Female": 1.0};
+  } else {
+    // Mixed gender ratio
+    return {
+      "Male": (8 - genderRate) / 8.0,
+      "Female": genderRate / 8.0,
+    };
+  }
+}
+
 
 // State class for MyHomePage
 class _MyHomePageState extends State<PokeDetailPage> {
@@ -93,6 +115,17 @@ class _MyHomePageState extends State<PokeDetailPage> {
   // Current search query string - stores the active search term
   // When empty, the app shows Pokémon by ID; when filled, it searches by name
   String _searchQuery = '';
+
+  final gradientList = <List<Color>>[
+    [
+      Color.fromRGBO(92, 100, 250, 1.0),
+      Color.fromRGBO(0, 15, 188, 1.0),
+    ],
+    [
+      Color.fromRGBO(255, 0, 194, 1.0),
+      Color.fromRGBO(255, 75, 189, 1.0),
+    ],
+  ];
 
   // Add initState to listen to controller changes so the suffix icon updates immediately
   @override
@@ -152,72 +185,6 @@ class _MyHomePageState extends State<PokeDetailPage> {
     });
   }
 
-  // Function to fetch Pokémon data from the API by ID
-  Future<Map<String, dynamic>?> fetchPokemon(int id, GraphQLClient client) async {
-    // Define the GraphQL query to get Pokémon species by ID
-    // Now includes base stats (HP, Attack, Defense, Special Attack, Special Defense, Speed)
-    final query = '''
-      query GetPokemonById {
-        pokemon(where: {id: {_eq: $id}}) {
-          id
-          name
-           pokemontypes{
-              type{
-                 name
-              }
-           }
-          pokemonstats{
-            base_stat
-            stat{
-              name
-            }
-          }
-        }
-      }
-    ''';
-    // Execute the query using the GraphQL client
-    final result = await client.query(QueryOptions(document: gql(query)));
-    // Extract the species data from the result
-    final species = result.data?['pokemon'];
-    // Return the first species if available, otherwise null
-    return (species != null && species.isNotEmpty) ? species[0] : null;
-  }
-
-  // Function to search Pokémon by name using GraphQL
-  // Uses case-insensitive matching with ILIKE operator
-  // Returns the first matching Pokémon found (limit: 1)
-  // Now includes base stats information
-  Future<Map<String, dynamic>?> searchPokemonByName(String name, GraphQLClient client) async {
-    // GraphQL query with WHERE clause for name matching
-    // _ilike: case-insensitive pattern matching (PostgreSQL operator)
-    // %$name%: matches any string containing the search term
-    // Example: searching "pika" will match "pikachu"
-    final query = '''
-      query SearchPokemonByName {
-        pokemon(where: {name: {_ilike: "%$name%"}}, limit: 1) {
-          id
-          name
-          pokemontypes{
-            type{
-               name
-            }
-          }
-          pokemonstats{
-            base_stat
-            stat{
-              name
-            }
-          }
-        }
-      }
-    ''';
-    // Execute the query using the GraphQL client
-    final result = await client.query(QueryOptions(document: gql(query)));
-    // Extract the species data from the result
-    final species = result.data?['pokemon'];
-    // Return the first species if available, otherwise null
-    return (species != null && species.isNotEmpty) ? species[0] : null;
-  }
 
   // New: Show Pokémon trading cards in a bottom sheet using TCG service
   // This method fetches cards by Pokémon name and displays them in a grid
@@ -552,7 +519,7 @@ class _MyHomePageState extends State<PokeDetailPage> {
                 // Otherwise, search by name with debounced query
                 future: _searchQuery.isEmpty
                     ? fetchPokemon(_counter, client) // Fetch by ID (navigation mode)
-                    : searchPokemonByName(_searchQuery, client), // Search by name (search mode)
+                    : searchSinglePokemonByName(_searchQuery, client), // Search by name (search mode)
                 builder: (context, snapshot) {
                   // Show loading indicator while waiting for data
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -578,17 +545,27 @@ class _MyHomePageState extends State<PokeDetailPage> {
                   // Extract types from the nested structure
                   //final pokemons = (pokemon['pokemons'] as List<dynamic>?) ?? [];
 
-                  final types = pokemon.isNotEmpty
-                      ? (pokemon['pokemontypes'] as List<dynamic>?)
-                      ?.map((t) => t['type']?['name'] as String?).whereType<String>().join(', ') ?? 'Unknown'
-                      : 'Unknown';
+                  final types = (pokemon['pokemontypes'] as List<dynamic>?)
+                      ?.map((t) => t['type']?['name'] as String?)
+                      .whereType<String>()
+                      .join(', ') ?? 'Unknown';
 
                   // EXTRACT BASE STATS FROM GRAPHQL RESPONSE
                   // Stats include: HP, Attack, Defense, Special Attack, Special Defense, Speed
                   // The API returns these in a nested structure: pokemons -> pokemonstats -> stat/base_stat
-                  final stats = pokemon.isNotEmpty
-                      ? (pokemon['pokemonstats'] as List<dynamic>?) ?? []
-                      : [];
+                  final stats = (pokemon['pokemonstats'] as List<dynamic>?) ?? [];
+
+
+                  final height = ((pokemon['height']/10) * 3.28084).toStringAsFixed(1);
+                  final weight = ((pokemon['weight']/10) * 2.20462).toStringAsFixed(1);
+
+                  // Extract gender_rate with null safety
+                  final genderRate = pokemon['pokemonspecy']?['gender_rate'] as int?;
+
+                  final eggGroups = (pokemon['pokemonspecy']?['pokemonegggroups'] as List<dynamic>?)
+                      ?.map((eg) => eg['egggroup']?['name'] as String?)
+                      .whereType<String>()
+                      .join(', ') ?? 'Unknown';
 
                   // CREATE A MAP TO ORGANIZE STATS BY NAME
                   // This map allows us to access stats by their name (e.g., 'hp', 'attack')
@@ -801,6 +778,82 @@ class _MyHomePageState extends State<PokeDetailPage> {
                           ),
                         ),
                         const SizedBox(height: 20), // Add bottom spacing for scrolling comfort
+
+                        // PHYSICAL STATS
+                        // This section shows various physical statistics of the pokemon
+                        // Design: White card with shadow, similar to Pokémon games style
+                        const SizedBox(height: 20), // Spacing before stats section
+                        Padding(
+                          padding: const EdgeInsets.symmetric(horizontal: 16.0), // Add horizontal padding (16px left & right)
+                          child: Container(
+                            padding: const EdgeInsets.all(20.0), // Internal padding for the stats card (all sides)
+                            decoration: BoxDecoration(
+                              color: isDarkMode ? Colors.grey[800] : Colors.white, // White background for stats card (clean, readable)
+                              borderRadius: BorderRadius.circular(15), // Rounded corners (15px radius for modern look)
+                              boxShadow: [ // Add shadow for depth and elevation effect
+                                BoxShadow(
+                                  color: Colors.grey.withOpacity(0.3), // Light grey shadow (30% opacity for subtle effect)
+                                  spreadRadius: 2, // Shadow spread (2px outward)
+                                  blurRadius: 5, // Shadow blur (5px for soft edges)
+                                  offset: const Offset(0, 2), // Shadow position (2px down, 0px horizontal)
+                                ),
+                              ],
+                            ),
+                            child: Column(
+                              children: [
+                                Text(
+                                  'Height: $height""',
+                                  style: GoogleFonts.roboto( // Use retro 8-bit font style
+                                    fontSize: 16, // Set font size to 16 pixels
+                                    color: isDarkMode ? Colors.white : Colors.black, // Use red color to match Pokémon brand
+                                    fontWeight: FontWeight.bold, // Make text bold for emphasis and readability
+                                  ),
+                                ),
+                                Text(
+                                  'Weight: $weight lbs',
+                                  style: GoogleFonts.roboto( // Use retro 8-bit font style
+                                    fontSize: 16, // Set font size to 16 pixels
+                                    color: isDarkMode ? Colors.white : Colors.black, // Use red color to match Pokémon brand
+                                    fontWeight: FontWeight.normal, // Make text bold for emphasis and readability
+                                  ),
+                                ),
+                                const SizedBox(height: 20),
+                                PieChart(
+                                  dataMap: _buildGenderMap(genderRate),
+                                  chartLegendSpacing: 32,
+                                  chartRadius: MediaQuery.of(context).size.width / 3.2,
+                                  gradientList: gradientList,
+                                  chartType: ChartType.ring,
+                                  ringStrokeWidth: 32,
+                                  centerText: "Gender",
+                                  chartValuesOptions: ChartValuesOptions(
+                                    showChartValuesInPercentage: true,
+                                    decimalPlaces: 1,
+                                  ),
+                                  legendOptions: LegendOptions(
+                                    legendTextStyle: GoogleFonts.roboto(
+                                      fontSize: 14,
+                                      color: isDarkMode ? Colors.white : Colors.black,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                ),
+                                ),
+                                const SizedBox(height: 20),
+                                Text(
+                                  'Egg Groups: $eggGroups',
+                                  style: GoogleFonts.roboto(
+                                    fontSize: 16,
+                                    color: isDarkMode ? Colors.white : Colors.black,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                  textAlign: TextAlign.center,
+                                ),
+                                const SizedBox(height: 8),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 60),
                       ],
                     ),
                   );
