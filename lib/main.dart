@@ -158,18 +158,14 @@ class _MyHomePageState extends State<PokeDetailPage> {
     // Now includes base stats (HP, Attack, Defense, Special Attack, Special Defense, Speed)
     final query = '''
       query GetPokemonById {
-        pokemonspecies(where: {id: {_eq: $id}}) {
+        pokemon(where: {id: {_eq: $id}}) {
           id
           name
-          pokemons{
-            pokemontypes{
+           pokemontypes{
               type{
                  name
               }
            }
-           pokemonsprites{
-             sprites
-          }
           pokemonstats{
             base_stat
             stat{
@@ -178,12 +174,11 @@ class _MyHomePageState extends State<PokeDetailPage> {
           }
         }
       }
-      }
     ''';
     // Execute the query using the GraphQL client
     final result = await client.query(QueryOptions(document: gql(query)));
     // Extract the species data from the result
-    final species = result.data?['pokemonspecies'];
+    final species = result.data?['pokemon'];
     // Return the first species if available, otherwise null
     return (species != null && species.isNotEmpty) ? species[0] : null;
   }
@@ -199,17 +194,13 @@ class _MyHomePageState extends State<PokeDetailPage> {
     // Example: searching "pika" will match "pikachu"
     final query = '''
       query SearchPokemonByName {
-        pokemonspecies(where: {name: {_ilike: "%$name%"}}, limit: 1) {
+        pokemon(where: {name: {_ilike: "%$name%"}}, limit: 1) {
           id
           name
-          pokemons{
-            pokemontypes{
-              type{
-                 name
-              }
-           }
-           pokemonsprites{
-             sprites
+          pokemontypes{
+            type{
+               name
+            }
           }
           pokemonstats{
             base_stat
@@ -219,12 +210,11 @@ class _MyHomePageState extends State<PokeDetailPage> {
           }
         }
       }
-      }
     ''';
     // Execute the query using the GraphQL client
     final result = await client.query(QueryOptions(document: gql(query)));
     // Extract the species data from the result
-    final species = result.data?['pokemonspecies'];
+    final species = result.data?['pokemon'];
     // Return the first species if available, otherwise null
     return (species != null && species.isNotEmpty) ? species[0] : null;
   }
@@ -586,18 +576,18 @@ class _MyHomePageState extends State<PokeDetailPage> {
                   final pokemon = snapshot.data!;
 
                   // Extract types from the nested structure
-                  final pokemons = (pokemon['pokemons'] as List<dynamic>?) ?? [];
+                  //final pokemons = (pokemon['pokemons'] as List<dynamic>?) ?? [];
 
-                  final types = pokemons.isNotEmpty
-                      ? (pokemons[0]['pokemontypes'] as List<dynamic>?)
+                  final types = pokemon.isNotEmpty
+                      ? (pokemon['pokemontypes'] as List<dynamic>?)
                       ?.map((t) => t['type']?['name'] as String?).whereType<String>().join(', ') ?? 'Unknown'
                       : 'Unknown';
 
                   // EXTRACT BASE STATS FROM GRAPHQL RESPONSE
                   // Stats include: HP, Attack, Defense, Special Attack, Special Defense, Speed
                   // The API returns these in a nested structure: pokemons -> pokemonstats -> stat/base_stat
-                  final stats = pokemons.isNotEmpty
-                      ? (pokemons[0]['pokemonstats'] as List<dynamic>?) ?? []
+                  final stats = pokemon.isNotEmpty
+                      ? (pokemon['pokemonstats'] as List<dynamic>?) ?? []
                       : [];
 
                   // CREATE A MAP TO ORGANIZE STATS BY NAME

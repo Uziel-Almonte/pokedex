@@ -179,20 +179,11 @@ class _MyHomePageState extends State<PokeHomePage> {
       whereConditions.add('pokemonabilities: {ability: {name: {_ilike: "%$_selectedAbility%"}}}');
     }
 
-    final whereClause = whereConditions.isEmpty
-        ? ''
-        : 'where: {${whereConditions.join(', ')}}, ';
-
     final query = '''
     query GetPokemonList {
-      pokemon(${whereClause}limit: 20, offset: ${(_counter - 1) * 20}) { 
+      pokemon(limit: 20, offset: ${(_counter - 1) * 20}) { 
         id 
         name 
-        pokemon_species_id 
-        pokemonspecy { 
-          name
-          generation_id
-        }
         pokemontypes {
           type {
             name 
@@ -228,12 +219,13 @@ class _MyHomePageState extends State<PokeHomePage> {
       pokemon(where: {name: {_ilike: "%$name%"}}, limit: 20) {
         id
         name
-        pokemon_species_id
-        pokemonspecy {
-          name
-        }
         pokemontypes {
           type {
+            name
+          }
+        }
+        pokemonabilities {
+          ability {
             name
           }
         }
