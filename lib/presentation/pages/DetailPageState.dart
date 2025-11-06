@@ -4,76 +4,22 @@ import 'dart:async';
 // Import GraphQL Flutter package for GraphQL client and widgets
 import 'package:graphql_flutter/graphql_flutter.dart';
 // Import the GraphQLService singleton
-import 'app_theme.dart';
-import 'graphql.dart';
+import '../../domain/main.dart';
+import '/presentation/app_theme.dart';
+import '/data/graphql.dart';
 //fonts de google
 import 'package:google_fonts/google_fonts.dart';
-import 'theme_provider.dart';
+import '/presentation/theme_provider.dart';
 import 'package:provider/provider.dart';
 import 'package:pie_chart/pie_chart.dart';
 
 // Import the TCG service for Pokémon trading cards
-import 'tcgCards.dart';
+import '/presentation/tcgCards.dart';
 
-import 'home.dart' as home_page;
-
-import 'package:pokedex/queries.dart';
+import 'package:pokedex/data/queries.dart';
 
 
-const darkMode = false;
 
-// Main entry point for the app
-void main() async {
-  // Ensure Flutter widget binding is initialized before running async code
-  WidgetsFlutterBinding.ensureInitialized();
-  // Initialize the GraphQLService singleton
-  await GraphQLService().init();
-  // Run the Flutter app, providing the GraphQL client to the widget tree
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => AppThemeState(),
-      child: GraphQLProvider(
-        client: ValueNotifier(GraphQLService().client),
-        child: const MyApp(),
-      ),
-    ),
-  );
-}
-
-// Main application widget
-class MyApp extends StatelessWidget {
-  // Constructor for MyApp
-  const MyApp({super.key});
-
-  // Build method returns the widget tree for the app
-  @override
-  Widget build(BuildContext context) {
-    final appThemeState = Provider.of<AppThemeState>(context);
-    // Return a MaterialApp widget
-    return MaterialApp(
-
-      title: 'Pokedex', // Set the app title
-        theme: AppTheme.lightTheme,
-        darkTheme: AppTheme.darkTheme,
-        themeMode: appThemeState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: const home_page.PokeHomePage(title: 'Pokedex'), // Set the home page
-    );
-  }
-}
-
-// Home page widget, which is stateful
-class PokeDetailPage extends StatefulWidget {
-  // Constructor for MyHomePage, requires a title
-  const PokeDetailPage({super.key, required this.title, this.initialPokemonId});
-
-  // Title field for the home page
-  final String title;
-  final int? initialPokemonId;
-
-  // Create the state for this widget
-  @override
-  State<PokeDetailPage> createState() => _MyHomePageState();
-}
 
 Map<String, double> _buildGenderMap(int? genderRate) {
   if (genderRate == null || genderRate == -1) {
@@ -94,9 +40,8 @@ Map<String, double> _buildGenderMap(int? genderRate) {
   }
 }
 
-
 // State class for MyHomePage
-class _MyHomePageState extends State<PokeDetailPage> {
+class DetailPageState extends State<PokeDetailPage> {
   // Counter to keep track of the current Pokémon ID
   // This increments when the user presses the floating action button
   int _counter = 1;
@@ -335,23 +280,23 @@ class _MyHomePageState extends State<PokeDetailPage> {
                                         ),
                                         child: imageUrl.isNotEmpty
                                             ? Image.network(
-                                                imageUrl,
-                                                fit: BoxFit.cover,
-                                                loadingBuilder: (context, child, progress) {
-                                                  if (progress == null) return child;
-                                                  return const Center(
-                                                    child: CircularProgressIndicator(
-                                                      color: Colors.red,
-                                                    ),
-                                                  );
-                                                },
-                                                errorBuilder: (c, e, s) => const Center(
-                                                  child: Icon(Icons.error, color: Colors.red),
-                                                ),
-                                              )
-                                            : const Center(
-                                                child: Icon(Icons.image_not_supported),
+                                          imageUrl,
+                                          fit: BoxFit.cover,
+                                          loadingBuilder: (context, child, progress) {
+                                            if (progress == null) return child;
+                                            return const Center(
+                                              child: CircularProgressIndicator(
+                                                color: Colors.red,
                                               ),
+                                            );
+                                          },
+                                          errorBuilder: (c, e, s) => const Center(
+                                            child: Icon(Icons.error, color: Colors.red),
+                                          ),
+                                        )
+                                            : const Center(
+                                          child: Icon(Icons.image_not_supported),
+                                        ),
                                       ),
                                     ),
                                     // Card info (name and set)
@@ -473,14 +418,14 @@ class _MyHomePageState extends State<PokeDetailPage> {
                 // Dynamically shows/hides based on text presence
                 suffixIcon: _searchController.text.isNotEmpty
                     ? IconButton(
-                        icon: const Icon(Icons.clear, color: Colors.red),
-                        onPressed: () {
-                          _searchController.clear(); // Clear the text field
-                          setState(() {
-                            _searchQuery = ''; // Reset search query to show ID-based navigation
-                          });
-                        },
-                      )
+                  icon: const Icon(Icons.clear, color: Colors.red),
+                  onPressed: () {
+                    _searchController.clear(); // Clear the text field
+                    setState(() {
+                      _searchQuery = ''; // Reset search query to show ID-based navigation
+                    });
+                  },
+                )
                     : null, // No icon when field is empty
 
                 // Background styling for the search field
@@ -603,7 +548,7 @@ class _MyHomePageState extends State<PokeDetailPage> {
                         Container(
                           padding: const EdgeInsets.all(20), // Add 20 pixels of padding inside the container on all sides
                           decoration: BoxDecoration(
-                              color: isDarkMode ? Colors.grey[800] : Colors.white, // Set container background to white for a clean card look
+                            color: isDarkMode ? Colors.grey[800] : Colors.white, // Set container background to white for a clean card look
                             borderRadius: BorderRadius.circular(20), // Round the corners with 20 pixel radius for modern look
                             boxShadow: [ // Add shadow effects to the container for depth and elevation
                               BoxShadow(
@@ -836,7 +781,7 @@ class _MyHomePageState extends State<PokeDetailPage> {
                                       color: isDarkMode ? Colors.white : Colors.black,
                                       fontWeight: FontWeight.w500,
                                     ),
-                                ),
+                                  ),
                                 ),
                                 const SizedBox(height: 20),
                                 Text(

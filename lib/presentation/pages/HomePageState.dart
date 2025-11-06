@@ -3,70 +3,21 @@ import 'dart:async';
 // Import GraphQL Flutter package for GraphQL client and widgets
 import 'package:graphql_flutter/graphql_flutter.dart';
 // Import the GraphQLService singleton
-import 'app_theme.dart';
-import 'graphql.dart';
+import '../app_theme.dart';
+import '../../data/graphql.dart';
 //fonts de google
 import 'package:google_fonts/google_fonts.dart';
-import 'theme_provider.dart';
+import '../theme_provider.dart';
 import 'package:provider/provider.dart';
-import 'reusable_widgets/PokeSelect.dart';
-import 'main.dart' as main_page;
-import 'package:pokedex/queries.dart';
+import '../PokeSelect.dart';
+import '/domain/main.dart' as main_page;
+import '/domain/home.dart' as home_page;
+import 'package:pokedex/data/queries.dart';
 
-class PokeHomePage extends StatefulWidget {
-  // Constructor for MyHomePage, requires a title
-  const PokeHomePage({super.key, required this.title, this.initialPokemonId});
-
-  // Title field for the home page
-  final String title;
-  final int? initialPokemonId;
-
-  // Create the state for this widget
-  @override
-  State<PokeHomePage> createState() => _MyHomePageState();
-}
-// Main entry point for the app
-void main() async {
-  // Ensure Flutter widget binding is initialized before running async code
-  WidgetsFlutterBinding.ensureInitialized();
-  // Initialize the GraphQLService singleton
-  await GraphQLService().init();
-  // Run the Flutter app, providing the GraphQL client to the widget tree
-  runApp(
-    ChangeNotifierProvider(
-      create: (_) => AppThemeState(),
-      child: GraphQLProvider(
-        client: ValueNotifier(GraphQLService().client),
-        child: const MyApp(),
-      ),
-    ),
-  );
-}
-
-// Main application widget
-class MyApp extends StatelessWidget {
-  // Constructor for MyApp
-  const MyApp({super.key});
-
-  // Build method returns the widget tree for the app
-  @override
-  Widget build(BuildContext context) {
-    final appThemeState = Provider.of<AppThemeState>(context);
-    // Return a MaterialApp widget
-    return MaterialApp(
-
-      title: 'Pokedex', // Set the app title
-      theme: AppTheme.lightTheme,
-      darkTheme: AppTheme.darkTheme,
-      themeMode: appThemeState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: const PokeHomePage(title: 'Pokedex'), // Set the home page
-    );
-  }
-}
 
 
 // State class for MyHomePage
-class _MyHomePageState extends State<PokeHomePage> {
+class HomePageState extends State<home_page.PokeHomePage> {
   // Counter to keep track of the current Pokémon ID
   // This increments when the user presses the floating action button
   int _counter = 1;
@@ -465,13 +416,13 @@ class _MyHomePageState extends State<PokeHomePage> {
                         contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                         suffixIcon: _selectedAbility != null
                             ? IconButton(
-                                icon: const Icon(Icons.clear, size: 18),
-                                onPressed: () {
-                                  setDialogState(() {
-                                    _selectedAbility = null;
-                                  });
-                                },
-                              )
+                          icon: const Icon(Icons.clear, size: 18),
+                          onPressed: () {
+                            setDialogState(() {
+                              _selectedAbility = null;
+                            });
+                          },
+                        )
                             : null,
                       ),
                       onChanged: (value) {
