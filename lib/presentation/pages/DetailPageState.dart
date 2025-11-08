@@ -14,9 +14,11 @@ import 'package:provider/provider.dart';
 import 'package:pie_chart/pie_chart.dart';
 
 // Import the TCG service for Pokémon trading cards
-import '/presentation/tcgCards.dart';
+import '../page_necessities/detail_page/tcgCards.dart';
 
 import 'package:pokedex/data/queries.dart';
+import '../page_necessities/detail_page/showPokemonCards.dart' as show_pokemon_cards;
+import '/domain/models/Pokemon.dart';
 
 
 
@@ -130,219 +132,6 @@ class DetailPageState extends State<PokeDetailPage> {
     });
   }
 
-
-  // New: Show Pokémon trading cards in a bottom sheet using TCG service
-  // This method fetches cards by Pokémon name and displays them in a grid
-  void _showPokemonCards(String pokemonName) {
-    showModalBottomSheet(
-      context: context,
-      isScrollControlled: true,
-      backgroundColor: Colors.transparent,
-      builder: (context) {
-        return FutureBuilder<List<Map<String, dynamic>>>(
-          future: TCGService.searchCardsByPokemon(pokemonName),
-          builder: (context, snapshot) {
-            // Show loading spinner while fetching data
-            if (snapshot.connectionState == ConnectionState.waiting) {
-              return Container(
-                height: MediaQuery.of(context).size.height * 0.4,
-                decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.grey[900] : Colors.white,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                child: const Center(child: CircularProgressIndicator(color: Colors.red)),
-              );
-            }
-
-            // Show error if something went wrong
-            if (snapshot.hasError) {
-              return Container(
-                height: MediaQuery.of(context).size.height * 0.3,
-                decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.grey[900] : Colors.white,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                child: Center(
-                  child: Padding(
-                    padding: const EdgeInsets.all(16.0),
-                    child: Text(
-                      'Error loading cards: ${snapshot.error}',
-                      style: GoogleFonts.roboto(color: Colors.red),
-                      textAlign: TextAlign.center,
-                    ),
-                  ),
-                ),
-              );
-            }
-
-            final cards = snapshot.data ?? [];
-
-            // Show message if no cards found
-            if (cards.isEmpty) {
-              return Container(
-                height: MediaQuery.of(context).size.height * 0.3,
-                decoration: BoxDecoration(
-                  color: isDarkMode ? Colors.grey[900] : Colors.white,
-                  borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                ),
-                child: Center(
-                  child: Text(
-                    'No trading cards found for $pokemonName',
-                    style: GoogleFonts.pressStart2p(fontSize: 10, color: Colors.red),
-                    textAlign: TextAlign.center,
-                  ),
-                ),
-              );
-            }
-
-            return DraggableScrollableSheet(
-              initialChildSize: 0.7,
-              minChildSize: 0.4,
-              maxChildSize: 0.95,
-              builder: (context, scrollController) {
-                return Container(
-                  decoration: BoxDecoration(
-                    color: isDarkMode ? Colors.grey[900] : Colors.white,
-                    borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                  ),
-                  child: Column(
-                    children: [
-                      // Drag handle
-                      Container(
-                        margin: const EdgeInsets.symmetric(vertical: 10),
-                        width: 40,
-                        height: 4,
-                        decoration: BoxDecoration(
-                          color: Colors.grey[400],
-                          borderRadius: BorderRadius.circular(2),
-                        ),
-                      ),
-                      // Title
-                      Padding(
-                        padding: const EdgeInsets.all(16.0),
-                        child: Text(
-                          '${pokemonName.toUpperCase()} CARDS (${cards.length})',
-                          style: GoogleFonts.pressStart2p(fontSize: 14, color: Colors.red),
-                        ),
-                      ),
-                      // Cards grid
-                      Expanded(
-                        child: GridView.builder(
-                          controller: scrollController,
-                          padding: const EdgeInsets.all(12),
-                          gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                            crossAxisCount: 2,
-                            childAspectRatio: 0.68,
-                            crossAxisSpacing: 10,
-                            mainAxisSpacing: 10,
-                          ),
-                          itemCount: cards.length,
-                          itemBuilder: (context, index) {
-                            final card = cards[index];
-                            // Extract image URL - it's a direct string in TCGDex API
-                            // Format: "https://assets.tcgdex.net/en/swsh/swsh3/136"
-                            // We can append "/high.png" or "/low.png" for different qualities
-                            final baseImageUrl = card['image']?.toString() ?? '';
-                            final imageUrl = baseImageUrl.isNotEmpty ? '$baseImageUrl/high.png' : '';
-
-                            return GestureDetector(
-                              onTap: () {
-                                if (imageUrl.isNotEmpty) {
-                                  showDialog(
-                                    context: context,
-                                    builder: (_) => Dialog(
-                                      backgroundColor: Colors.black,
-                                      child: InteractiveViewer(
-                                        child: Image.network(
-                                          imageUrl,
-                                          errorBuilder: (c, e, s) => Center(
-                                            child: Text('Image not available', style: GoogleFonts.roboto(color: Colors.white)),
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                }
-                              },
-                              child: Card(
-                                elevation: 3,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.stretch,
-                                  children: [
-                                    // Card image
-                                    Expanded(
-                                      child: ClipRRect(
-                                        borderRadius: const BorderRadius.vertical(
-                                          top: Radius.circular(10),
-                                        ),
-                                        child: imageUrl.isNotEmpty
-                                            ? Image.network(
-                                          imageUrl,
-                                          fit: BoxFit.cover,
-                                          loadingBuilder: (context, child, progress) {
-                                            if (progress == null) return child;
-                                            return const Center(
-                                              child: CircularProgressIndicator(
-                                                color: Colors.red,
-                                              ),
-                                            );
-                                          },
-                                          errorBuilder: (c, e, s) => const Center(
-                                            child: Icon(Icons.error, color: Colors.red),
-                                          ),
-                                        )
-                                            : const Center(
-                                          child: Icon(Icons.image_not_supported),
-                                        ),
-                                      ),
-                                    ),
-                                    // Card info (name and set)
-                                    Padding(
-                                      padding: const EdgeInsets.all(8.0),
-                                      child: Column(
-                                        crossAxisAlignment: CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            card['name']?.toString() ?? 'Unknown',
-                                            style: GoogleFonts.roboto(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.bold,
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                          Text(
-                                            card['set']?['name']?.toString() ?? card['id']?.toString() ?? '',
-                                            style: GoogleFonts.roboto(
-                                              fontSize: 10,
-                                              color: Colors.grey[600],
-                                            ),
-                                            maxLines: 1,
-                                            overflow: TextOverflow.ellipsis,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            );
-                          },
-                        ),
-                      ),
-                    ],
-                  ),
-                );
-              },
-            );
-          },
-        );
-      },
-    );
-  }
 
   // Build method returns the widget tree for the home page
   @override
@@ -485,58 +274,7 @@ class DetailPageState extends State<PokeDetailPage> {
 
 
                   // Get the Pokémon data from the snapshot
-                  final pokemon = snapshot.data!;
-
-                  // Extract types from the nested structure
-                  //final pokemons = (pokemon['pokemons'] as List<dynamic>?) ?? [];
-
-                  final types = (pokemon['pokemontypes'] as List<dynamic>?)
-                      ?.map((t) => t['type']?['name'] as String?)
-                      .whereType<String>()
-                      .join(', ') ?? 'Unknown';
-
-                  // EXTRACT BASE STATS FROM GRAPHQL RESPONSE
-                  // Stats include: HP, Attack, Defense, Special Attack, Special Defense, Speed
-                  // The API returns these in a nested structure: pokemons -> pokemonstats -> stat/base_stat
-                  final stats = (pokemon['pokemonstats'] as List<dynamic>?) ?? [];
-
-
-                  final height = ((pokemon['height']/10) * 3.28084).toStringAsFixed(1);
-                  final weight = ((pokemon['weight']/10) * 2.20462).toStringAsFixed(1);
-
-                  // Extract gender_rate with null safety
-                  final genderRate = pokemon['pokemonspecy']?['gender_rate'] as int?;
-
-                  final eggGroups = (pokemon['pokemonspecy']?['pokemonegggroups'] as List<dynamic>?)
-                      ?.map((eg) => eg['egggroup']?['name'] as String?)
-                      .whereType<String>()
-                      .join(', ') ?? 'Unknown';
-
-                  // CREATE A MAP TO ORGANIZE STATS BY NAME
-                  // This map allows us to access stats by their name (e.g., 'hp', 'attack')
-                  // instead of iterating through the list every time we need a specific stat
-                  // Example: statsMap['hp'] = 45, statsMap['attack'] = 60
-                  final Map<String, int> statsMap = {};
-
-                  // CALCULATE TOTAL STATS
-                  // Variable to accumulate the sum of all base stats
-                  // This gives us the overall power level of the Pokémon
-                  // Typical range: 180-780 (Shedinja has lowest, Eternamax has highest)
-                  int totalStats = 0;
-
-                  // LOOP THROUGH ALL STATS AND ORGANIZE THEM
-                  // The API returns stats with structure: {base_stat: 45, stat: {name: "hp"}}
-                  // We extract both the name and value, then store in our map
-                  for (var stat in stats) {
-                    final statName = stat['stat']?['name'] as String?; // Get stat name (e.g., "hp", "attack")
-                    final baseStat = stat['base_stat'] as int?; // Get stat value (e.g., 45, 60)
-
-                    // Only add to map if both name and value exist (null safety)
-                    if (statName != null && baseStat != null) {
-                      statsMap[statName] = baseStat; // Store in map for easy access
-                      totalStats += baseStat; // Add to running total
-                    }
-                  }
+                  final pokemon = Pokemon.fromGraphQL(snapshot.data!);
 
                   // Display the Pokémon ID and name
                   return SingleChildScrollView(
@@ -560,7 +298,7 @@ class DetailPageState extends State<PokeDetailPage> {
                             ],
                           ),
                           child: Image.network(
-                            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon['id']}.png',
+                            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon.id}.png',
                             height: 150, // Set image height to 150 pixels
                             width: 150, // Set image width to 150 pixels (square image)
                           ),
@@ -568,7 +306,7 @@ class DetailPageState extends State<PokeDetailPage> {
                         const SizedBox(height: 30), // Add 30 pixels of vertical spacing between elements
                         // Pokémon ID with styled text
                         Text(
-                          'ID: ${pokemon['id']}',
+                          'ID: ${pokemon.id}',
                           style: GoogleFonts.pressStart2p( // Use retro 8-bit font style
                             fontSize: 16, // Set font size to 16 pixels
                             color: Colors.red, // Use red color to match Pokémon brand
@@ -578,7 +316,7 @@ class DetailPageState extends State<PokeDetailPage> {
                         const SizedBox(height: 10), // Add 10 pixels of vertical spacing
                         // Pokémon name with styled text
                         Text(
-                          pokemon['name'].toString().toUpperCase(), // Convert name to uppercase for impact
+                          pokemon.name.toUpperCase(), // Convert name to uppercase for impact
                           style: GoogleFonts.pressStart2p( // Use retro 8-bit font style
                             fontSize: 24, // Set larger font size (24 pixels) since this is the main title
                             color: isDarkMode ? Colors.red : Colors.blue[900], // Use dark blue color (shade 900 is darkest)
@@ -595,7 +333,7 @@ class DetailPageState extends State<PokeDetailPage> {
                         const SizedBox(height: 10), // Add 10 pixels of vertical spacing
                         // Pokémon types with styled text
                         Text(
-                          'Types: $types',
+                          'Types: ${pokemon.typesString}',
                           style: GoogleFonts.roboto( // Use Roboto font (modern, clean sans-serif)
                             fontSize: 18, // Set font size to 18 pixels for good readability
                             color: Colors.green[700], // Use medium-dark green (shade 700) for nature/type theme
@@ -640,32 +378,32 @@ class DetailPageState extends State<PokeDetailPage> {
 
                                 // HP STAT (Health Points)
                                 // Red color represents health/vitality
-                                _buildStatRow('HP', statsMap['hp'] ?? 0, Colors.red),
+                                _buildStatRow('HP', pokemon.stats['hp'] ?? 0, Colors.red),
                                 const SizedBox(height: 8), // Spacing between stats
 
                                 // ATTACK STAT
                                 // Orange color represents physical power
-                                _buildStatRow('ATK', statsMap['attack'] ?? 0, Colors.orange),
+                                _buildStatRow('ATK', pokemon.stats['attack'] ?? 0, Colors.orange),
                                 const SizedBox(height: 8),
 
                                 // DEFENSE STAT
                                 // Yellow color represents protection/armor
-                                _buildStatRow('DEF', statsMap['defense'] ?? 0, Colors.yellow[700]!),
+                                _buildStatRow('DEF', pokemon.stats['defense'] ?? 0, Colors.yellow[700]!),
                                 const SizedBox(height: 8),
 
                                 // SPECIAL ATTACK STAT
                                 // Blue color represents special/magical power
-                                _buildStatRow('SpA', statsMap['special-attack'] ?? 0, Colors.blue),
+                                _buildStatRow('SpA', pokemon.stats['special-attack'] ?? 0, Colors.blue),
                                 const SizedBox(height: 8),
 
                                 // SPECIAL DEFENSE STAT
                                 // Green color represents special resistance/nature
-                                _buildStatRow('SpD', statsMap['special-defense'] ?? 0, Colors.green),
+                                _buildStatRow('SpD', pokemon.stats['special-defense'] ?? 0, Colors.green),
                                 const SizedBox(height: 8),
 
                                 // SPEED STAT
                                 // Pink color represents agility/quickness
-                                _buildStatRow('SPE', statsMap['speed'] ?? 0, Colors.pink),
+                                _buildStatRow('SPE', pokemon.stats['speed'] ?? 0, Colors.pink),
                                 const SizedBox(height: 12), // Extra spacing before divider
 
                                 // DIVIDER LINE
@@ -687,7 +425,7 @@ class DetailPageState extends State<PokeDetailPage> {
                                       ),
                                     ),
                                     Text(
-                                      totalStats.toString(), // Display calculated total
+                                      pokemon.totalStats.toString(), // Display calculated total
                                       style: GoogleFonts.pressStart2p(
                                         fontSize: 14, // Larger to emphasize the total
                                         color: Colors.purple, // Purple for special emphasis
@@ -706,7 +444,7 @@ class DetailPageState extends State<PokeDetailPage> {
                         // Uses the TCGDex API to fetch real card images from various TCG sets
                         const SizedBox(height: 20), // Spacing before button
                         ElevatedButton.icon(
-                          onPressed: () => _showPokemonCards(pokemon['name']), // Open cards modal with Pokémon name
+                          onPressed: () => show_pokemon_cards.showPokemonCards(pokemon.name, context, isDarkMode), // Open cards modal with Pokémon name
                           icon: const Icon(Icons.style, color: Colors.white), // Playing card icon
                           label: Text(
                             'VIEW CARDS',
@@ -747,7 +485,7 @@ class DetailPageState extends State<PokeDetailPage> {
                             child: Column(
                               children: [
                                 Text(
-                                  'Height: $height""',
+                                  'Height: ${pokemon.formattedHeight}""',
                                   style: GoogleFonts.roboto( // Use retro 8-bit font style
                                     fontSize: 16, // Set font size to 16 pixels
                                     color: isDarkMode ? Colors.white : Colors.black, // Use red color to match Pokémon brand
@@ -755,7 +493,7 @@ class DetailPageState extends State<PokeDetailPage> {
                                   ),
                                 ),
                                 Text(
-                                  'Weight: $weight lbs',
+                                  'Weight: ${pokemon.formattedWeight} lbs',
                                   style: GoogleFonts.roboto( // Use retro 8-bit font style
                                     fontSize: 16, // Set font size to 16 pixels
                                     color: isDarkMode ? Colors.white : Colors.black, // Use red color to match Pokémon brand
@@ -764,7 +502,7 @@ class DetailPageState extends State<PokeDetailPage> {
                                 ),
                                 const SizedBox(height: 20),
                                 PieChart(
-                                  dataMap: _buildGenderMap(genderRate),
+                                  dataMap: _buildGenderMap(pokemon.genderRate),
                                   chartLegendSpacing: 32,
                                   chartRadius: MediaQuery.of(context).size.width / 3.2,
                                   gradientList: gradientList,
@@ -785,7 +523,7 @@ class DetailPageState extends State<PokeDetailPage> {
                                 ),
                                 const SizedBox(height: 20),
                                 Text(
-                                  'Egg Groups: $eggGroups',
+                                  'Egg Groups: ${pokemon.eggGroups}',
                                   style: GoogleFonts.roboto(
                                     fontSize: 16,
                                     color: isDarkMode ? Colors.white : Colors.black,
