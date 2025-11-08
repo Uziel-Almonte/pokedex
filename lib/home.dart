@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 import 'reusable_widgets/PokeSelect.dart';
 import 'main.dart' as main_page;
 import 'package:pokedex/queries.dart';
+import 'pokemon_quiz.dart';
 
 class PokeHomePage extends StatefulWidget {
   // Constructor for MyHomePage, requires a title
@@ -190,6 +191,19 @@ class _MyHomePageState extends State<PokeHomePage> {
           ),
         ),
         actions: [ // Adds the theme toggle switch to the app bar
+          // Quiz button
+          IconButton(
+            icon: const Icon(Icons.quiz, color: Colors.yellow),
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => const PokemonQuizPage(),
+                ),
+              );
+            },
+            tooltip: 'Who\'s That Pokémon?',
+          ),
           Consumer<AppThemeState>( // Listen to theme state changes
             builder: (context, themeState, _) {
               return Row(

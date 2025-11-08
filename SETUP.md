@@ -387,12 +387,178 @@ This document details the setup and implementation steps for the Pokedex app, in
 - **Search History**: Remember recent searches
 - **Filter Presets**: Save and load custom filter combinations
 
-## 19. File Structure
+## 19. "Who's That Pokémon?" Quiz Feature
+A fun interactive quiz game inspired by the classic Pokémon TV show segment where players guess Pokémon based on their silhouette.
+
+### Quiz Page Structure (pokemon_quiz.dart)
+- **Widget**: `PokemonQuizPage` (StatefulWidget)
+  - Implements the complete quiz game experience
+  - Manages quiz state, scoring, and user interactions
+  - Uses Pokémon-themed retro styling matching the app's aesthetic
+
+### State Management
+- **State Variables**:
+  - `_randomPokemonId` (int?): Random ID (1-1010) for current Pokémon
+  - `_currentPokemon` (Map?): Fetched Pokémon data from GraphQL API
+  - `_isRevealed` (bool): Whether the Pokémon has been revealed
+  - `_isCorrect` (bool): Whether the last guess was correct
+  - `_guessController` (TextEditingController): Manages text input field
+  - `_feedbackMessage` (String): Displays result messages to user
+  - `_score` (int): Number of correct guesses in session
+  - `_attempts` (int): Total number of guesses + reveals
+  - `_isLoading` (bool): Loading state for API fetch
+
+### Core Methods
+
+#### `_loadNewPokemon()`
+- Generates and loads a new random Pokémon for the quiz
+- **Process**:
+  1. Sets loading state and resets all quiz variables
+  2. Generates random ID using `Random().nextInt(1010) + 1`
+  3. Fetches Pokémon data via GraphQL using `fetchPokemon()`
+  4. Updates state with fetched data and stops loading spinner
+- **Random Selection**: Uses Dart's `dart:math` Random class
+- **Range**: 1-1010 covers all Pokémon across all generations
+
+#### `_checkGuess()`
+- Validates and evaluates the user's guess
+- **Validation**:
+  - Checks if input field is not empty
+  - Returns early with feedback message if empty
+- **Comparison Logic**:
+  - Normalizes both guess and correct answer (trim + lowercase)
+  - Performs case-insensitive string comparison
+  - Handles null values gracefully with null-aware operators
+- **Correct Guess**:
+  - Sets `_isCorrect = true` for green feedback styling
+  - Sets `_isRevealed = true` to show full-color image
+  - Increments `_score` counter
+  - Displays success message with Pokémon name
+- **Incorrect Guess**:
+  - Displays "Wrong! Try again or reveal the answer."
+  - User can keep guessing or click "Reveal"
+  - Does NOT increment score
+- **Both Cases**: Increments `_attempts` counter
+
+#### `_revealPokemon()`
+- Reveals the Pokémon without requiring a correct guess
+- Used when player gives up or wants to skip
+- **Actions**:
+  - Sets `_isRevealed = true` to show full-color image
+  - Increments `_attempts` (but NOT score)
+  - Displays "The Pokémon is [name]!" message
+
+#### `_nextPokemon()`
+- Loads the next random Pokémon question
+- Simply calls `_loadNewPokemon()` to reset and fetch new data
+
+### UI Components
+
+#### AppBar
+- **Background**: Red (classic Pokémon color)
+- **Title**: "Who's That Pokémon?"
+  - Font: Press Start 2P (retro 8-bit style)
+  - Color: Yellow text with blue shadow
+  - References the iconic TV show segment
+  - Centered horizontally
+
+#### Score Display
+- **Container** with light red background and red border
+- **Layout**: Row with two text elements spaced evenly
+- **Score**: Number of correct guesses
+- **Attempts**: Total guesses + reveals
+- **Styling**: Press Start 2P font, dark red text
+
+#### Pokémon Image Section
+- **Container**: 300x300px with white background and red border
+- **ColorFiltered Widget**: Creates silhouette effect
+  - **Revealed State**: Transparent filter (normal colors)
+  - **Hidden State**: Black silhouette using color matrix
+    - Matrix zeros out RGB channels (all become 0)
+    - Preserves alpha channel (opacity) at 1
+    - Result: Solid black shape of the Pokémon
+- **Image Source**: PokeAPI official artwork sprites
+  - URL: `https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/{id}.png`
+  - High-quality official artwork
+  - Error handling with error icon fallback
+
+#### Feedback Message
+- **Conditional Rendering**: Only shows when message is not empty
+- **Color Coding**:
+  - Green background/border for correct guesses
+  - Orange background/border for incorrect/revealed
+- **Font**: Press Start 2P for retro consistency
+- **Text Alignment**: Centered
+
+#### Input Section (Before Reveal)
+- **TextField**:
+  - Placeholder: "Enter Pokémon name..."
+  - Red border (default), blue border (focused)
+  - Rounded corners (12px radius)
+  - Submit on Enter/Return key press
+- **Guess Button**:
+  - Green background (submit/confirm action)
+  - Checkmark icon
+  - Calls `_checkGuess()` on press
+- **Reveal Button**:
+  - Orange background (secondary action)
+  - Eye/visibility icon
+  - Calls `_revealPokemon()` on press
+
+#### Revealed Section (After Reveal)
+- **Card Widget**: Shows Pokémon details
+  - Name in Press Start 2P font (red, size 18)
+  - ID number in standard font (e.g., "ID: #25")
+  - Red border with rounded corners
+  - Elevated shadow (depth 4)
+- **Next Pokémon Button**:
+  - Blue background (continue action)
+  - Skip/next icon
+  - Calls `_nextPokemon()` to load new question
+  - Larger padding for prominence
+
+### Game Flow
+1. **Initialization**: Page loads, fetches first random Pokémon
+2. **Display**: Shows black silhouette of Pokémon
+3. **User Input**: Player types guess in text field
+4. **Guess Attempt**:
+   - Correct → Reveal Pokémon, increment score, show success message
+   - Incorrect → Show error message, allow retry or reveal
+5. **Reveal Option**: User can skip by clicking "Reveal" button
+6. **Next Question**: Click "Next Pokémon" to load new random Pokémon
+7. **Loop**: Steps 2-6 repeat indefinitely
+
+### Technical Implementation
+- **Random Number Generation**: Uses `dart:math` Random class
+- **Async Data Fetching**: Await GraphQL query with loading states
+- **State Management**: Local StatefulWidget state (no Provider needed)
+- **Null Safety**: Extensive use of null-aware operators (?., ??)
+- **Text Normalization**: Case-insensitive comparison for user-friendly guessing
+- **Memory Management**: TextEditingController disposed in `dispose()` method
+
+### User Experience Features
+- **Loading Spinner**: Shows during API fetch to indicate progress
+- **Keyboard Support**: Submit guess by pressing Enter key
+- **Visual Feedback**: Color-coded messages (green/orange) for clarity
+- **Accessibility**: High-contrast silhouette effect, clear button labels
+- **Forgiving Input**: Case-insensitive, whitespace-trimmed comparison
+- **Multiple Attempts**: Users can guess multiple times before revealing
+- **Score Tracking**: Persistent session stats (score and attempts)
+
+### Styling Consistency
+- Matches overall app theme with red/yellow Pokémon branding
+- Uses Press Start 2P font throughout for retro aesthetic
+- Rounded corners and borders consistent with app design
+- Color scheme: Red, yellow, blue (classic Pokémon colors)
+
+## 20. File Structure
 ```
 lib/
 ├── main.dart                    # Main app entry, detail page UI
 ├── home.dart                    # Home page with list, search, filters
+├── pokemon_quiz.dart            # "Who's That Pokémon?" quiz game
 ├── graphql.dart                 # GraphQL service singleton
+├── queries.dart                 # GraphQL query functions
 ├── tcgCards.dart                # TCG API service for trading cards
 ├── app_theme.dart               # Light/dark theme definitions
 ├── theme_provider.dart          # Theme state management
@@ -400,7 +566,7 @@ lib/
     └── PokeSelect.dart          # Reusable Pokémon card widget with gradients
 ```
 
-## 20. Running the App
+## 21. Running the App
 1. Ensure Flutter SDK is installed
 2. Run `flutter pub get` to install dependencies
 3. Connect a device or start an emulator
@@ -408,8 +574,3 @@ lib/
 5. Search for Pokémon by name or browse by ID
 6. Click "VIEW CARDS" to see trading card collection
 7. Toggle light/dark mode with switch in AppBar
-
-## 21. API Documentation
-- **PokeAPI GraphQL**: https://beta.pokeapi.co/graphql/console/
-- **TCGDex API**: https://api.tcgdex.net/v2/docs
-- **PokeAPI Sprites**: https://github.com/PokeAPI/sprites
