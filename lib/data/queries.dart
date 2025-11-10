@@ -18,7 +18,7 @@ Future<List<Map<String, dynamic>>> fetchPokemonList(GraphQLClient client, String
 
   final query = '''
     query GetPokemonList {
-      pokemon(limit: 20, offset: ${(_counter - 1) * 20}) { 
+      pokemon(limit: 50, offset: ${(_counter - 1) * 5}) { 
         id 
         name 
         pokemontypes {

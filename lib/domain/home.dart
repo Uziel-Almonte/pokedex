@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 // Import GraphQL Flutter package for GraphQL client and widgets
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'package:provider/provider.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
 // Import the GraphQLService singleton
 import '../presentation/app_theme.dart';
 import '../data/graphql.dart';
@@ -9,6 +11,8 @@ import '../data/graphql.dart';
 import '../presentation/theme_provider.dart';
 import 'package:provider/provider.dart';
 import '../presentation/pages/HomePageState.dart';
+import '../domain/state_management/bloc_state_home.dart';
+
 
 
 class PokeHomePage extends StatefulWidget {
@@ -57,7 +61,12 @@ class MyApp extends StatelessWidget {
       theme: AppTheme.lightTheme,
       darkTheme: AppTheme.darkTheme,
       themeMode: appThemeState.isDarkMode ? ThemeMode.dark : ThemeMode.light,
-      home: const PokeHomePage(title: 'Pokedex'), // Set the home page
+      home: BlocProvider(
+        create: (context) => HomeBloc(
+          client: GraphQLService().client,
+        )..add(const LoadPokemonList(pokemonId: 1)),
+        child: const PokeHomePage(title: 'Pokedex'),
+      ), // Set the home page
     );
   }
 }

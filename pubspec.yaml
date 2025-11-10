@@ -33,6 +33,7 @@ dependencies:
   google_fonts: ^6.3.2
   pie_chart: ^5.4.0
   flutter_bloc: ^9.1.1
+  equatable: ^2.0.0
   flutter:
     sdk: flutter
 

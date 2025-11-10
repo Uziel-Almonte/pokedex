@@ -2,17 +2,17 @@ import 'package:flutter/material.dart';
 import 'dart:async';
 // Import GraphQL Flutter package for GraphQL client and widgets
 import 'package:graphql_flutter/graphql_flutter.dart';
-// Import the GraphQLService singleton
-import '../app_theme.dart';
-import '../../data/graphql.dart';
 //fonts de google
 import 'package:google_fonts/google_fonts.dart';
+
+import 'package:flutter_bloc/flutter_bloc.dart';
 import '../theme_provider.dart';
 import 'package:provider/provider.dart';
 import '../page_necessities/home_page/PokeSelect.dart';
 import '/domain/main.dart' as main_page;
 import '/domain/home.dart' as home_page;
 import 'package:pokedex/data/queries.dart';
+import '/domain/state_management/bloc_state_home.dart';
 
 import '/presentation/page_necessities/home_page/showFilterDialog.dart' as show_filter_dialog;
 
@@ -22,13 +22,18 @@ import '/presentation/page_necessities/home_page/showFilterDialog.dart' as show_
 class HomePageState extends State<home_page.PokeHomePage> {
   // Counter to keep track of the current Pokémon ID
   // This increments when the user presses the floating action button
-  int _counter = 1;
 
-  bool get isDarkMode => Provider.of<AppThemeState>(context).isDarkMode;
+  bool get isDarkMode =>
+      Provider
+          .of<AppThemeState>(context)
+          .isDarkMode;
 
   // Text controller for search bar - manages the text input state
   // Allows us to read, clear, and listen to changes in the search field
   final TextEditingController _searchController = TextEditingController();
+
+  // Scroll controller for the Pokémon list - manages scrolling behavior
+  final ScrollController _scrollController = ScrollController();
 
   // Timer for debounce functionality - prevents excessive API calls
   // Debounce waits for the user to stop typing before triggering the search
@@ -39,6 +44,8 @@ class HomePageState extends State<home_page.PokeHomePage> {
   // When empty, the app shows Pokémon by ID; when filled, it searches by name
   String _searchQuery = '';
 
+  HomeBloc? _homeBloc;
+
   // ============================================================================
   // VARIABLES DE ESTADO PARA EL SISTEMA DE FILTROS
   // ============================================================================
@@ -47,9 +54,9 @@ class HomePageState extends State<home_page.PokeHomePage> {
   //
   // Cuando el usuario selecciona un filtro en el diálogo, estas variables se actualizan
   // y se usa setState() para reconstruir la interfaz con los resultados filtrados.
-  String? _selectedType;        // Tipo de Pokémon seleccionado (fire, water, grass, etc.)
-  int? _selectedGeneration;     // Generación seleccionada (1-9)
-  String? _selectedAbility;     // Nombre de habilidad para buscar (ej: "overgrow")
+  String? _selectedType; // Tipo de Pokémon seleccionado (fire, water, grass, etc.)
+  int? _selectedGeneration; // Generación seleccionada (1-9)
+  String? _selectedAbility; // Nombre de habilidad para buscar (ej: "overgrow")
 
   // Add initState to listen to controller changes so the suffix icon updates immediately
   @override
@@ -58,11 +65,18 @@ class HomePageState extends State<home_page.PokeHomePage> {
     // When the controller text changes we call setState() so widgets that depend on
     // _searchController.text (like the clear button) rebuild immediately instead of
     // waiting for the debounce to complete.
-    _counter = widget.initialPokemonId ?? 1;
     _searchController.addListener(() {
       // Only rebuild if mounted to avoid setState after dispose
       if (mounted) setState(() {});
     });
+    _scrollController.addListener(_onScroll);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Store the bloc reference here
+    _homeBloc = context.read<HomeBloc>();
   }
 
   // Cleanup method called when this widget is removed from the widget tree
@@ -70,23 +84,22 @@ class HomePageState extends State<home_page.PokeHomePage> {
   @override
   void dispose() {
     _searchController.dispose(); // Release text controller resources
-    _debounce?.cancel(); // Cancel any pending debounce timer
+    _scrollController.dispose(); // Release scroll controller resources
+    _debounce?.cancel(); // Cancel any active debounce timer
     super.dispose(); // Call parent dispose method
   }
 
-  // Function to increment the counter when the button is pressed
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
+  void _onScroll() {
+    if (_isBottom && _homeBloc != null) {
+      context.read<HomeBloc>().add(LoadMorePokemon());
+    }
   }
 
-  void _decrementCounter() {
-    setState(() {
-      if (_counter > 1) {
-        _counter--;
-      }
-    });
+  bool get _isBottom {
+    if (!_scrollController.hasClients) return false;
+    final maxScroll = _scrollController.position.maxScrollExtent;
+    final currentScroll = _scrollController.offset;
+    return currentScroll >= (maxScroll * 0.9);
   }
 
   // Function to handle search input changes with debounce
@@ -117,221 +130,163 @@ class HomePageState extends State<home_page.PokeHomePage> {
     });
   }
 
-  // Build method returns the widget tree for the home page
   @override
   Widget build(BuildContext context) {
-    // Get the GraphQL client from the provider
-    final client = GraphQLProvider.of(context).value;
-    // Return a Scaffold widget for the page layout
-    return Scaffold(
-      appBar: AppBar(
-        backgroundColor: Colors.red, // Set Pokémon red color for app bar background
-        centerTitle: true, // Center the title horizontally in the app bar
-        title: Text( // Set app bar title with Pokémon style
-          widget.title,
-          style: GoogleFonts.pressStart2p( // Apply Press Start 2P font (retro 8-bit style)
-            fontSize: 20, // Set font size to 20 pixels
-            color: Colors.yellow, // Set text color to yellow (iconic Pokémon color)
-            fontWeight: FontWeight.bold, // Make the text bold for emphasis
-            shadows: [ // Add shadow effects to the text for depth
-              const Shadow(
-                offset: Offset(2, 2), // Move shadow 2 pixels right and 2 pixels down
-                blurRadius: 4, // Blur the shadow edges for a soft effect (4 pixels)
-                color: Colors.blue, // Set shadow color to blue for contrast
-              ),
-            ],
-          ),
-        ),
-        actions: [ // Adds the theme toggle switch to the app bar
-          Consumer<AppThemeState>( // Listen to theme state changes
-            builder: (context, themeState, _) {
-              return Row(
-                children: [
-                  Icon( // Light mode icon
-                    Icons.light_mode,
-                    color: themeState.isDarkMode ? Colors.grey : Colors.yellow,
-                    size: 20,
-                  ),
-                  Switch( // Actual Toggle Switch
-                    value: themeState.isDarkMode,
-                    onChanged: (_) => themeState.toggleTheme(), // uses an arrow function to toggle theme
-                    activeColor: Colors.yellow,
-                  ),
-                  Icon(
-                    Icons.dark_mode,
-                    color: themeState.isDarkMode ? Colors.yellow : Colors.grey,
-                    size: 20,
-                  ),
-                  const SizedBox(width: 8),
-                ],
-              );
-            },
-          ),
-        ],
-      ),
-      body: Column(
-        children: [
-          // SEARCH BAR SECTION
-          // This TextField allows users to search for Pokémon by name
-          // Features: debounce, clear button, themed styling, rounded borders
-          Padding(
-            padding: const EdgeInsets.all(16.0),
-            child: Row(
+    final client = GraphQLProvider
+        .of(context)
+        .value;
+
+    return BlocProvider(
+      create: (ctx) =>
+      HomeBloc(client: client)
+        ..add(LoadPokemonList(pokemonId: widget.initialPokemonId ?? 1)),
+      // use Builder so inner context includes the BlocProvider
+      child: Builder(
+        builder: (context) {
+          return Scaffold(
+            appBar: _buildAppBar(context),
+            body: Column(
               children: [
-                // Search TextField
-                Expanded(
-                  child: TextField(
-                    controller: _searchController,
-                    onChanged: _onSearchChanged,
-                    maxLength: 100,
-                    decoration: InputDecoration(
-                      counterText: '', // Hide character counter
-                      hintText: 'Search Pokémon...',
-                      hintStyle: GoogleFonts.roboto(color: Colors.grey[600]),
-                      prefixIcon: const Icon(Icons.search, color: Colors.red),
-                      suffixIcon: _searchController.text.isNotEmpty
-                          ? IconButton(
-                        icon: const Icon(Icons.clear, color: Colors.red),
-                        onPressed: () {
-                          _searchController.clear();
-                          setState(() {
-                            _searchQuery = '';
-                          });
-                        },
-                      )
-                          : null,
-                      filled: true,
-                      fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: BorderSide.none,
-                      ),
-                      enabledBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: const BorderSide(color: Colors.red, width: 2),
-                      ),
-                      focusedBorder: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(30),
-                        borderSide: const BorderSide(color: Colors.blue, width: 2),
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 8), // Spacing between search and filter button
-                // Filter Button
-                Container(
-                  decoration: BoxDecoration(
-                    color: Colors.red,
-                    borderRadius: BorderRadius.circular(15),
-                  ),
-                  child: IconButton(
-                    icon: const Icon(Icons.filter_list, color: Colors.white),
-                    onPressed: () async {
-                      final result = await show_filter_dialog.showFilterDialog(
-                        context,
-                        _selectedType,
-                        _selectedGeneration,
-                        _selectedAbility,
-                      );
-                      if (result != null) {
-                        setState(() {
-                          _selectedType = result['type'];
-                          _selectedGeneration = result['generation'];
-                          _selectedAbility = result['ability'];
-                        });
-                      }
-                    },
-                    tooltip: 'Filter Pokémon',
-                  ),
-                ),
+                _buildSearchAndFilterBar(context),
+                Expanded(child: _buildPokemonList(context)),
               ],
             ),
-          ),
-
-
-          // POKÉMON DISPLAY AREA
-          // This section shows the Pokémon information below the search bar
-          Expanded(
-            child: FutureBuilder<List<Map<String, dynamic>>>(
-              future: _searchQuery.isEmpty // si esta vacio, carga las listas normales
-                  ? fetchPokemonList(client, _selectedType, _selectedGeneration, _selectedAbility, _counter)
-                  : searchPokemonByName(_searchQuery, client), // si no esta vacia, carga por nombre
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(
-                    child: CircularProgressIndicator(color: Colors.red),
-                  );
-                }
-
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(
-                    child: Text(
-                      'No Pokémon found.',
-                      style: GoogleFonts.pressStart2p(fontSize: 14, color: Colors.red),
-                    ),
-                  );
-                }
-
-                return ListView.builder(
-                  itemCount: snapshot.data!.length,
-                  itemBuilder: (context, index) {
-                    final pokemon = snapshot.data![index];
-                    final types = (pokemon['pokemontypes'] as List<dynamic>?)
-                        ?.map((t) => t['type']?['name'] as String?)
-                        .whereType<String>()
-                        .join(', ') ?? 'Unknown';
-
-                    return PokeSelect(
-                      pokemon: pokemon,
-                      types: types,
-                      isDarkMode: isDarkMode,
-                      onTap: () {
-                        Navigator.push(
-                          context,
-                          MaterialPageRoute(
-                            builder: (context) => main_page.PokeDetailPage(
-                              title: 'Pokedex',
-                              initialPokemonId: pokemon['id'] as int, // Pasa el ID del Pokémon
-                            ),
-                          ),
-                        );
-                      },
-                    );
-                  },
-                );
-              },
-            ),
-          ),
-
-        ],
+          );
+        },
       ),
-      // Floating action button to increment the counter
-      floatingActionButton: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+    );
+  }
+
+  AppBar _buildAppBar(BuildContext context) {
+    return AppBar(
+      backgroundColor: Colors.red,
+      centerTitle: true,
+      title: Text(
+        widget.title,
+        style: GoogleFonts.pressStart2p(
+          fontSize: 20,
+          color: Colors.yellow,
+          fontWeight: FontWeight.bold,
+          shadows: [
+            const Shadow(
+              offset: Offset(2, 2),
+              blurRadius: 4,
+              color: Colors.blue,
+            ),
+          ],
+        ),
+      ),
+      actions: [
+        Consumer<AppThemeState>(
+          builder: (context, themeState, _) {
+            return Row(
+              children: [
+                Icon(
+                  Icons.light_mode,
+                  color: themeState.isDarkMode ? Colors.grey : Colors.yellow,
+                  size: 20,
+                ),
+                Switch(
+                  value: themeState.isDarkMode,
+                  onChanged: (_) => themeState.toggleTheme(),
+                  activeColor: Colors.yellow,
+                ),
+                Icon(
+                  Icons.dark_mode,
+                  color: themeState.isDarkMode ? Colors.yellow : Colors.grey,
+                  size: 20,
+                ),
+                const SizedBox(width: 8),
+              ],
+            );
+          },
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSearchAndFilterBar(BuildContext context) {
+    final isDarkMode = Provider
+        .of<AppThemeState>(context)
+        .isDarkMode;
+    return Padding(
+      padding: const EdgeInsets.all(16.0),
+      child: Row(
         children: [
-          // Botón de retroceso (izquierda)
-          Padding(
-            padding: const EdgeInsets.only(left: 30), // Espaciado desde el borde
-            child: FloatingActionButton(
-              onPressed: _decrementCounter,
-              backgroundColor: Colors.blue,
-              tooltip: 'Previous Pokémon',
-              heroTag: 'decrementButton', // Necesario cuando hay múltiples FABs
-              child: const Icon(
-                Icons.arrow_back,
-                color: Colors.white,
+          Expanded(
+            child: TextField(
+              controller: _searchController,
+              onChanged: (query) {
+                _onSearchChanged(query);
+                context.read<HomeBloc>().add(
+                    SearchPokemon(query.toLowerCase().trim()));
+              },
+              maxLength: 100,
+              decoration: InputDecoration(
+                counterText: '',
+                hintText: 'Search Pokémon...',
+                hintStyle: GoogleFonts.roboto(color: Colors.grey[600]),
+                prefixIcon: const Icon(Icons.search, color: Colors.red),
+                suffixIcon: _searchController.text.isNotEmpty
+                    ? IconButton(
+                  icon: const Icon(Icons.clear, color: Colors.red),
+                  onPressed: () {
+                    _searchController.clear();
+                    context.read<HomeBloc>().add(const SearchPokemon(''));
+                  },
+                )
+                    : null,
+                filled: true,
+                fillColor: isDarkMode ? Colors.grey[800] : Colors.white,
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: BorderSide.none,
+                ),
+                enabledBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: const BorderSide(color: Colors.red, width: 2),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(30),
+                  borderSide: const BorderSide(color: Colors.blue, width: 2),
+                ),
               ),
             ),
           ),
-          // Botón de avance (derecha)
-          FloatingActionButton(
-            onPressed: _incrementCounter,
-            backgroundColor: Colors.red,
-            tooltip: 'Next Pokémon',
-            heroTag: 'incrementButton', // Necesario cuando hay múltiples FABs
-            child: const Icon(
-              Icons.arrow_forward,
-              color: Colors.white,
+          const SizedBox(width: 8),
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.red,
+              borderRadius: BorderRadius.circular(15),
+            ),
+            child: BlocBuilder<HomeBloc, HomeState>(
+              builder: (context, state) {
+                return IconButton(
+                  icon: const Icon(Icons.filter_list, color: Colors.white),
+                  onPressed: () async {
+                    final currentState = state;
+                    final result = await show_filter_dialog.showFilterDialog(
+                      context,
+                      currentState is HomeLoaded
+                          ? currentState.selectedType
+                          : null,
+                      currentState is HomeLoaded ? currentState
+                          .selectedGeneration : null,
+                      currentState is HomeLoaded
+                          ? currentState.selectedAbility
+                          : null,
+                    );
+                    if (result != null && mounted) {
+                      context.read<HomeBloc>().add(UpdateFilters(
+                        type: result['type'],
+                        generation: result['generation'],
+                        ability: result['ability'],
+                      ));
+                    }
+                  },
+                  tooltip: 'Filter Pokémon',
+                );
+              },
             ),
           ),
         ],
@@ -339,4 +294,83 @@ class HomePageState extends State<home_page.PokeHomePage> {
     );
   }
 
+  Widget _buildPokemonList(BuildContext context) {
+    return BlocBuilder<HomeBloc, HomeState>(
+      builder: (context, state) {
+        if (state is HomeLoading) {
+          return const Center(
+            child: CircularProgressIndicator(color: Colors.red),
+          );
+        }
+
+        if (state is HomeError) {
+          return Center(
+            child: Text(
+              state.message,
+              style: GoogleFonts.pressStart2p(fontSize: 14, color: Colors.red),
+            ),
+          );
+        }
+
+        if (state is HomeLoaded) {
+          if (state.pokemonList.isEmpty) {
+            return Center(
+              child: Text(
+                'No Pokémon found.',
+                style: GoogleFonts.pressStart2p(
+                    fontSize: 14, color: Colors.red),
+              ),
+            );
+          }
+
+          return ListView.builder(
+            controller: _scrollController,
+            itemCount: state.hasReachedMax
+                ? state.pokemonList.length
+                : state.pokemonList.length + 1,
+            itemBuilder: (context, index) {
+              if (index >= state.pokemonList.length) {
+                return const Center(
+                  child: Padding(
+                    padding: EdgeInsets.all(16.0),
+                    child: CircularProgressIndicator(color: Colors.red),
+                  ),
+                );
+              }
+
+              final pokemon = state.pokemonList[index];
+              final types = (pokemon['pokemontypes'] as List<dynamic>?)
+                  ?.map((t) => t['type']?['name'] as String?)
+                  .whereType<String>()
+                  .join(', ') ??
+                  'Unknown';
+
+              return PokeSelect(
+                pokemon: pokemon,
+                types: types,
+                isDarkMode: Provider
+                    .of<AppThemeState>(context)
+                    .isDarkMode,
+                onTap: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (context) =>
+                          main_page.PokeDetailPage(
+                            title: 'Pokedex',
+                            initialPokemonId: pokemon['id'] as int,
+                          ),
+                    ),
+                  );
+                },
+              );
+            },
+          );
+        }
+
+        return const SizedBox.shrink();
+      },
+    );
+  }
 }
+
