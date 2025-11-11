@@ -28,7 +28,9 @@ class LoadPokemonList extends HomeEvent {
   List<Object?> get props => [pokemonId, selectedType, selectedGeneration, selectedAbility];
 }
 
-class LoadMorePokemon extends HomeEvent {}
+class LoadMorePokemon extends HomeEvent {
+  const LoadMorePokemon();
+}
 
 class SearchPokemon extends HomeEvent {
   final String query;
@@ -140,12 +142,12 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       ) async {
     emit(HomeLoading());
     try {
-      final pokemonList = await _fetchPokemonRange(
-        event.pokemonId,
-        _pageSize,
+      final pokemonList = await fetchPokemonList(
+        client,
         event.selectedType,
         event.selectedGeneration,
         event.selectedAbility,
+        1, // Start from page 1
       );
 
       emit(HomeLoaded(
@@ -161,32 +163,39 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
+
   Future<void> _onLoadMorePokemon(
       LoadMorePokemon event,
       Emitter<HomeState> emit,
       ) async {
     final currentState = state;
-    if (currentState is! HomeLoaded || currentState.hasReachedMax) return;
+    if (currentState is HomeLoaded && !currentState.hasReachedMax) {
+      try {
+        // Calculate the next starting ID for pagination
+        final nextPage = (currentState.pokemonList.length ~/ _pageSize) + 1;
 
-    try {
-      final nextId = currentState.currentPokemonId + _pageSize;
-      final newPokemon = await _fetchPokemonRange(
-        nextId,
-        _pageSize,
-        currentState.selectedType,
-        currentState.selectedGeneration,
-        currentState.selectedAbility,
-      );
+        // Fetch more Pokemon using the GraphQL query with filters
+        final morePokemon = await fetchPokemonList(
+          client,
+          currentState.selectedType,
+          currentState.selectedGeneration,
+          currentState.selectedAbility,
+          nextPage,
+        );
 
-      emit(currentState.copyWith(
-        pokemonList: [...currentState.pokemonList, ...newPokemon],
-        currentPokemonId: nextId,
-        hasReachedMax: newPokemon.length < _pageSize,
-      ));
-    } catch (e) {
-      // Keep current state on error
+        // Append to existing list instead of replacing
+        final updatedList = [...currentState.pokemonList, ...morePokemon];
+
+        emit(currentState.copyWith(
+          pokemonList: updatedList,
+          hasReachedMax: morePokemon.length < _pageSize,
+        ));
+      } catch (e) {
+        emit(HomeError(e.toString()));
+      }
     }
   }
+
 
   Future<List<Map<String, dynamic>>> _fetchPokemonRange(
       int startId,
@@ -196,19 +205,24 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       String? ability,
       ) async {
     final List<Map<String, dynamic>> results = [];
+    int currentId = startId;
+    int attempts = 0;
+    final maxAttempts = count * 3; // Allow more attempts when filtering
 
-    for (int i = 0; i < count; i++) {
-      final pokemonData = await fetchPokemon(startId + i, client);
+    while (results.length < count && attempts < maxAttempts) {
+      final pokemonData = await fetchPokemon(currentId, client);
       if (pokemonData != null) {
-        // Apply filters if needed
         if (_matchesFilters(pokemonData, type, generation, ability)) {
           results.add(pokemonData);
         }
       }
+      currentId++;
+      attempts++;
     }
 
     return results;
   }
+
 
   bool _matchesFilters(
       Map<String, dynamic> pokemon,

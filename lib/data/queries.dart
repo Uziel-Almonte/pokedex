@@ -16,9 +16,15 @@ Future<List<Map<String, dynamic>>> fetchPokemonList(GraphQLClient client, String
     whereConditions.add('pokemonabilities: {ability: {name: {_ilike: "%$_selectedAbility%"}}}');
   }
 
+  // Build the WHERE clause
+  final whereClause = whereConditions.isNotEmpty
+      ? 'where: {${whereConditions.join(', ')}}'
+      : '';
+
+
   final query = '''
     query GetPokemonList {
-      pokemon(limit: 50, offset: ${(_counter - 1) * 5}) { 
+      pokemon($whereClause limit: 50, offset: ${(_counter - 1) * 50}, order_by: {id: asc}) { 
         id 
         name 
         pokemontypes {
@@ -31,6 +37,9 @@ Future<List<Map<String, dynamic>>> fetchPokemonList(GraphQLClient client, String
             name
           }
         }
+        pokemonspecy {
+          generation_id
+        }
       }
     }
   ''';
@@ -38,6 +47,7 @@ Future<List<Map<String, dynamic>>> fetchPokemonList(GraphQLClient client, String
   final result = await client.query(QueryOptions(document: gql(query)));
   // Extract the species data from the result
   final pokemons = result.data?['pokemon'] as List<dynamic>?;
+
   // Return the first species if available, otherwise null
   return pokemons?.cast<Map<String, dynamic>>() ?? [];
 }
@@ -63,6 +73,24 @@ Future<Map<String, dynamic>?> fetchPokemon(int id, GraphQLClient client) async {
             base_stat
             stat{
               name
+            }
+          }
+          pokemonabilities{
+            ability{
+              name
+            }
+            is_hidden
+          }
+          pokemonmoves(order_by: {level: asc}) {
+            level
+            move {
+              name
+              power
+              accuracy
+              pp
+              type {
+                name
+              }
             }
           }
           pokemonspecy {

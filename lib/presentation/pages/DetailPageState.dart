@@ -631,4 +631,243 @@ class DetailPageState extends State<PokeDetailPage> {
       ],
     );
   }
+
+// Helper method to build abilities container
+  Widget _buildAbilitiesContainer(List<dynamic>? abilities) {
+    if (abilities == null || abilities.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey[800] : Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Abilities',
+            style: GoogleFonts.pressStart2p(
+              fontSize: 16,
+              color: Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          ...abilities.map((abilityData) {
+            final ability = abilityData['ability'];
+            final isHidden = abilityData['is_hidden'] ?? false;
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 8),
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: isHidden ? Colors.orange.withOpacity(0.2) : Colors.blue.withOpacity(0.2),
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(
+                  color: isHidden ? Colors.orange : Colors.blue,
+                  width: 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              ability['name'] ?? 'Unknown',
+                              style: GoogleFonts.roboto(
+                                fontSize: 14,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                            if (isHidden) ...[
+                              const SizedBox(width: 8),
+                              Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                decoration: BoxDecoration(
+                                  color: Colors.orange,
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                child: Text(
+                                  'HIDDEN',
+                                  style: GoogleFonts.roboto(
+                                    fontSize: 10,
+                                    color: Colors.white,
+                                    fontWeight: FontWeight.bold,
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                        if (ability['effect'] != null) ...[
+                          const SizedBox(height: 4),
+                          Text(
+                            ability['effect'],
+                            style: GoogleFonts.roboto(
+                              fontSize: 12,
+                              color: Colors.grey[600],
+                            ),
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            );
+          }).toList(),
+        ],
+      ),
+    );
+  }
+
+// Helper method to build moves container
+  Widget _buildMovesContainer(List<dynamic>? moves) {
+    if (moves == null || moves.isEmpty) {
+      return const SizedBox.shrink();
+    }
+
+    // Group moves by level
+    final Map<int, List<Map<String, dynamic>>> movesByLevel = {};
+    for (var moveData in moves) {
+      final level = moveData['level'] as int? ?? 0;
+      final move = moveData['move'] as Map<String, dynamic>?;
+      if (move != null) {
+        movesByLevel.putIfAbsent(level, () => []).add(move);
+      }
+    }
+
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: isDarkMode ? Colors.grey[800] : Colors.white,
+        borderRadius: BorderRadius.circular(15),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.1),
+            spreadRadius: 2,
+            blurRadius: 5,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Text(
+            'Moves by Level',
+            style: GoogleFonts.pressStart2p(
+              fontSize: 16,
+              color: Colors.red,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
+          const SizedBox(height: 12),
+          SizedBox(
+            height: 300,
+            child: ListView.builder(
+              itemCount: movesByLevel.keys.length,
+              itemBuilder: (context, index) {
+                final level = movesByLevel.keys.elementAt(index);
+                final levelMoves = movesByLevel[level]!;
+
+                return ExpansionTile(
+                  title: Text(
+                    level == 0 ? 'Base Moves' : 'Level $level',
+                    style: GoogleFonts.roboto(
+                      fontSize: 14,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.blue,
+                    ),
+                  ),
+                  children: levelMoves.map((move) {
+                    return ListTile(
+                      dense: true,
+                      title: Text(
+                        move['name'] ?? 'Unknown Move',
+                        style: GoogleFonts.roboto(fontSize: 13),
+                      ),
+                      subtitle: Row(
+                        children: [
+                          if (move['pokemon_v2_type'] != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                              decoration: BoxDecoration(
+                                color: _getTypeColor(move['pokemon_v2_type']['name']),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                move['pokemon_v2_type']['name'].toUpperCase(),
+                                style: GoogleFonts.roboto(
+                                  fontSize: 10,
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.bold,
+                                ),
+                              ),
+                            ),
+                          const SizedBox(width: 8),
+                          Text(
+                            'PWR: ${move['power'] ?? '--'} | ACC: ${move['accuracy'] ?? '--'}% | PP: ${move['pp'] ?? '--'}',
+                            style: GoogleFonts.roboto(
+                              fontSize: 11,
+                              color: Colors.grey[600],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  }).toList(),
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+// Helper method to get type colors (reuse from PokeSelect)
+  Color _getTypeColor(String? typeName) {
+    const typeColors = {
+      'normal': Color(0xFFA8A878),
+      'fire': Color(0xFFF08030),
+      'water': Color(0xFF6890F0),
+      'electric': Color(0xFFF8D030),
+      'grass': Color(0xFF78C850),
+      'ice': Color(0xFF98D8D8),
+      'fighting': Color(0xFFC03028),
+      'poison': Color(0xFFA040A0),
+      'ground': Color(0xFFE0C068),
+      'flying': Color(0xFFA890F0),
+      'psychic': Color(0xFFF85888),
+      'bug': Color(0xFFA8B820),
+      'rock': Color(0xFFB8A038),
+      'ghost': Color(0xFF705898),
+      'dragon': Color(0xFF7038F8),
+      'dark': Color(0xFF705848),
+      'steel': Color(0xFFB8B8D0),
+      'fairy': Color(0xFFEE99AC),
+    };
+    return typeColors[typeName?.toLowerCase()] ?? Colors.grey;
+  }
+
 }

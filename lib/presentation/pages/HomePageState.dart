@@ -44,8 +44,6 @@ class HomePageState extends State<home_page.PokeHomePage> {
   // When empty, the app shows Pokémon by ID; when filled, it searches by name
   String _searchQuery = '';
 
-  HomeBloc? _homeBloc;
-
   // ============================================================================
   // VARIABLES DE ESTADO PARA EL SISTEMA DE FILTROS
   // ============================================================================
@@ -72,13 +70,6 @@ class HomePageState extends State<home_page.PokeHomePage> {
     _scrollController.addListener(_onScroll);
   }
 
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    // Store the bloc reference here
-    _homeBloc = context.read<HomeBloc>();
-  }
-
   // Cleanup method called when this widget is removed from the widget tree
   // It's important to dispose of controllers and timers to prevent memory leaks
   @override
@@ -90,7 +81,7 @@ class HomePageState extends State<home_page.PokeHomePage> {
   }
 
   void _onScroll() {
-    if (_isBottom && _homeBloc != null) {
+    if (_isBottom) {
       context.read<HomeBloc>().add(LoadMorePokemon());
     }
   }
@@ -132,30 +123,19 @@ class HomePageState extends State<home_page.PokeHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final client = GraphQLProvider
-        .of(context)
-        .value;
+    final client = GraphQLProvider.of(context).value;
 
-    return BlocProvider(
-      create: (ctx) =>
-      HomeBloc(client: client)
-        ..add(LoadPokemonList(pokemonId: widget.initialPokemonId ?? 1)),
-      // use Builder so inner context includes the BlocProvider
-      child: Builder(
-        builder: (context) {
-          return Scaffold(
-            appBar: _buildAppBar(context),
-            body: Column(
-              children: [
-                _buildSearchAndFilterBar(context),
-                Expanded(child: _buildPokemonList(context)),
-              ],
-            ),
-          );
-        },
+    return Scaffold(
+      appBar: _buildAppBar(context),
+      body: Column(
+        children: [
+          _buildSearchAndFilterBar(context),
+          Expanded(child: _buildPokemonList(context)),
+        ],
       ),
     );
   }
+
 
   AppBar _buildAppBar(BuildContext context) {
     return AppBar(
