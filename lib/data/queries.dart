@@ -94,6 +94,7 @@ Future<Map<String, dynamic>?> fetchPokemon(int id, GraphQLClient client) async {
             }
           }
           pokemon_v2_pokemonspecy {
+            id
             gender_rate
             pokemon_v2_pokemonegggroups {
               pokemon_v2_egggroup {
@@ -146,4 +147,37 @@ Future<List<Map<String, dynamic>>> searchPokemonByName(String name, GraphQLClien
 Future<Map<String, dynamic>?> searchSinglePokemonByName(String name, GraphQLClient client) async {
   final results = await searchPokemonByName(name, client);
   return results.isNotEmpty ? results.first : null;
+}
+
+Future<Map<String, dynamic>?> fetchEvolutionChain(int speciesId, GraphQLClient client) async {
+  final query = '''
+    query GetEvolutionChain {
+      pokemon_v2_pokemonspecies(where: {id: {_eq: $speciesId}}) {
+        id
+        name
+        pokemon_v2_evolutionchain {
+          pokemon_v2_pokemonspecies(order_by: {order: asc}) {
+            id
+            name
+            order
+            evolves_from_species_id
+            pokemon_v2_pokemonevolutions {
+              min_level
+              evolution_item_id
+              pokemon_v2_item {
+                name
+              }
+            }
+            pokemon_v2_pokemons(limit: 1) {
+              id
+            }
+          }
+        }
+      }
+    }
+  ''';
+
+  final result = await client.query(QueryOptions(document: gql(query)));
+  final species = result.data?['pokemon_v2_pokemonspecies'];
+  return (species != null && species.isNotEmpty) ? species[0] : null;
 }

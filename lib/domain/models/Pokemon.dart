@@ -8,6 +8,9 @@ class Pokemon {
   final int totalStats;
   final int? genderRate;
   final String eggGroups;
+  final List<Map<String, dynamic>> abilities;
+  final List<Map<String, dynamic>> moves;
+  final int? speciesId;
 
   Pokemon({
     required this.id,
@@ -19,6 +22,9 @@ class Pokemon {
     required this.totalStats,
     this.genderRate,
     required this.eggGroups,
+    this.abilities = const [],
+    this.moves = const [],
+    this.speciesId,
   });
 
   factory Pokemon.fromGraphQL(Map<String, dynamic> data) {
@@ -62,6 +68,14 @@ class Pokemon {
         .whereType<String>()
         .join(', ') ?? 'Unknown';
 
+    // abilities - handle multiple possible key names
+    final rawAbilities = data['pokemon_v2_pokemonabilities'] ?? data['abilities'] ?? [];
+    final abilities = (rawAbilities is List) ? rawAbilities.cast<Map<String, dynamic>>() : <Map<String, dynamic>>[];
+
+    final rawMoves = data['pokemon_v2_pokemonmoves'] ?? data['moves'] ?? [];
+    final moves = (rawMoves is List) ? rawMoves.cast<Map<String, dynamic>>() : <Map<String, dynamic>>[];
+
+
     return Pokemon(
       id: data['id'] as int,
       name: data['name'] as String,
@@ -72,6 +86,9 @@ class Pokemon {
       totalStats: total,
       genderRate: data['pokemon_v2_pokemonspecy']?['gender_rate'] as int?,
       eggGroups: eggGroups,
+      abilities: abilities,
+      moves: moves,
+      speciesId: data['pokemon_v2_pokemonspecy']?['id'] as int?,
     );
   }
 

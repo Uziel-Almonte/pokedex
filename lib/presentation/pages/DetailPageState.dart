@@ -20,6 +20,12 @@ import 'package:pokedex/data/queries.dart';
 import '../page_necessities/detail_page/showPokemonCards.dart' as show_pokemon_cards;
 import '/domain/models/Pokemon.dart';
 
+import '../page_necessities/detail_page/AbilitiesCard.dart' as abilities_card;
+import '../page_necessities/detail_page/MovesCard.dart' as moves_card;
+import '../page_necessities/detail_page/EvolutionChainCard.dart' as evolutions_card;
+import '../page_necessities/detail_page/StatsCard.dart' as stats_card;
+import '../page_necessities/detail_page/PhysicalStatsCard.dart' as physical_stats_card;
+
 
 
 
@@ -95,13 +101,6 @@ class DetailPageState extends State<PokeDetailPage> {
     _searchController.dispose(); // Release text controller resources
     _debounce?.cancel(); // Cancel any pending debounce timer
     super.dispose(); // Call parent dispose method
-  }
-
-  // Function to increment the counter when the button is pressed
-  void _incrementCounter() {
-    setState(() {
-      _counter++;
-    });
   }
 
   // Function to handle search input changes with debounce
@@ -347,95 +346,11 @@ class DetailPageState extends State<PokeDetailPage> {
                         // Design: White card with shadow, similar to Pokémon games style
                         const SizedBox(height: 20), // Spacing before stats section
                         Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0), // Add horizontal padding (16px left & right)
-                          child: Container(
-                            padding: const EdgeInsets.all(16.0), // Internal padding for the stats card (all sides)
-                            decoration: BoxDecoration(
-                              color: isDarkMode ? Colors.grey[800] : Colors.white, // White background for stats card (clean, readable)
-                              borderRadius: BorderRadius.circular(15), // Rounded corners (15px radius for modern look)
-                              boxShadow: [ // Add shadow for depth and elevation effect
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.3), // Light grey shadow (30% opacity for subtle effect)
-                                  spreadRadius: 2, // Shadow spread (2px outward)
-                                  blurRadius: 5, // Shadow blur (5px for soft edges)
-                                  offset: const Offset(0, 2), // Shadow position (2px down, 0px horizontal)
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                // STATS TITLE
-                                // "BASE STATS" header in retro gaming font
-                                Text(
-                                  'BASE STATS',
-                                  style: GoogleFonts.pressStart2p(
-                                    fontSize: 14, // Medium size for section header
-                                    color: Colors.red, // Pokémon red theme
-                                    fontWeight: FontWeight.bold, // Bold for emphasis
-                                  ),
-                                ),
-                                const SizedBox(height: 15), // Spacing after title
-
-                                // HP STAT (Health Points)
-                                // Red color represents health/vitality
-                                _buildStatRow('HP', pokemon.stats['hp'] ?? 0, Colors.red),
-                                const SizedBox(height: 8), // Spacing between stats
-
-                                // ATTACK STAT
-                                // Orange color represents physical power
-                                _buildStatRow('ATK', pokemon.stats['attack'] ?? 0, Colors.orange),
-                                const SizedBox(height: 8),
-
-                                // DEFENSE STAT
-                                // Yellow color represents protection/armor
-                                _buildStatRow('DEF', pokemon.stats['defense'] ?? 0, Colors.yellow[700]!),
-                                const SizedBox(height: 8),
-
-                                // SPECIAL ATTACK STAT
-                                // Blue color represents special/magical power
-                                _buildStatRow('SpA', pokemon.stats['special-attack'] ?? 0, Colors.blue),
-                                const SizedBox(height: 8),
-
-                                // SPECIAL DEFENSE STAT
-                                // Green color represents special resistance/nature
-                                _buildStatRow('SpD', pokemon.stats['special-defense'] ?? 0, Colors.green),
-                                const SizedBox(height: 8),
-
-                                // SPEED STAT
-                                // Pink color represents agility/quickness
-                                _buildStatRow('SPE', pokemon.stats['speed'] ?? 0, Colors.pink),
-                                const SizedBox(height: 12), // Extra spacing before divider
-
-                                // DIVIDER LINE
-                                // Separates individual stats from the total
-                                const Divider(thickness: 2, color: Colors.grey),
-                                const SizedBox(height: 8),
-
-                                // TOTAL STATS ROW
-                                // Shows the sum of all base stats (power level indicator)
-                                Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween, // Space between label and value
-                                  children: [
-                                    Text(
-                                      'TOTAL',
-                                      style: GoogleFonts.pressStart2p(
-                                        fontSize: 12, // Slightly smaller than title
-                                        color: isDarkMode ? Colors.white : Colors.black, // Black for contrast
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                    Text(
-                                      pokemon.totalStats.toString(), // Display calculated total
-                                      style: GoogleFonts.pressStart2p(
-                                        fontSize: 14, // Larger to emphasize the total
-                                        color: Colors.purple, // Purple for special emphasis
-                                        fontWeight: FontWeight.bold,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ],
-                            ),
+                          padding: const EdgeInsets.symmetric(horizontal: 10.0),
+                          child: stats_card.StatsCard(
+                            stats: pokemon.stats,
+                            totalStats: pokemon.totalStats,
+                            isDarkMode: isDarkMode,
                           ),
                         ),
 
@@ -466,76 +381,27 @@ class DetailPageState extends State<PokeDetailPage> {
                         // This section shows various physical statistics of the pokemon
                         // Design: White card with shadow, similar to Pokémon games style
                         const SizedBox(height: 20), // Spacing before stats section
-                        Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: 16.0), // Add horizontal padding (16px left & right)
-                          child: Container(
-                            padding: const EdgeInsets.all(20.0), // Internal padding for the stats card (all sides)
-                            decoration: BoxDecoration(
-                              color: isDarkMode ? Colors.grey[800] : Colors.white, // White background for stats card (clean, readable)
-                              borderRadius: BorderRadius.circular(15), // Rounded corners (15px radius for modern look)
-                              boxShadow: [ // Add shadow for depth and elevation effect
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.3), // Light grey shadow (30% opacity for subtle effect)
-                                  spreadRadius: 2, // Shadow spread (2px outward)
-                                  blurRadius: 5, // Shadow blur (5px for soft edges)
-                                  offset: const Offset(0, 2), // Shadow position (2px down, 0px horizontal)
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                Text(
-                                  'Height: ${pokemon.formattedHeight}""',
-                                  style: GoogleFonts.roboto( // Use retro 8-bit font style
-                                    fontSize: 16, // Set font size to 16 pixels
-                                    color: isDarkMode ? Colors.white : Colors.black, // Use red color to match Pokémon brand
-                                    fontWeight: FontWeight.bold, // Make text bold for emphasis and readability
-                                  ),
-                                ),
-                                Text(
-                                  'Weight: ${pokemon.formattedWeight} lbs',
-                                  style: GoogleFonts.roboto( // Use retro 8-bit font style
-                                    fontSize: 16, // Set font size to 16 pixels
-                                    color: isDarkMode ? Colors.white : Colors.black, // Use red color to match Pokémon brand
-                                    fontWeight: FontWeight.normal, // Make text bold for emphasis and readability
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                PieChart(
-                                  dataMap: _buildGenderMap(pokemon.genderRate),
-                                  chartLegendSpacing: 32,
-                                  chartRadius: MediaQuery.of(context).size.width / 3.2,
-                                  gradientList: gradientList,
-                                  chartType: ChartType.ring,
-                                  ringStrokeWidth: 32,
-                                  centerText: "Gender",
-                                  chartValuesOptions: ChartValuesOptions(
-                                    showChartValuesInPercentage: true,
-                                    decimalPlaces: 1,
-                                  ),
-                                  legendOptions: LegendOptions(
-                                    legendTextStyle: GoogleFonts.roboto(
-                                      fontSize: 14,
-                                      color: isDarkMode ? Colors.white : Colors.black,
-                                      fontWeight: FontWeight.w500,
-                                    ),
-                                  ),
-                                ),
-                                const SizedBox(height: 20),
-                                Text(
-                                  'Egg Groups: ${pokemon.eggGroups}',
-                                  style: GoogleFonts.roboto(
-                                    fontSize: 16,
-                                    color: isDarkMode ? Colors.white : Colors.black,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                  textAlign: TextAlign.center,
-                                ),
-                                const SizedBox(height: 8),
-                              ],
-                            ),
-                          ),
+                        physical_stats_card.PhysicalStatsCard(
+                          height: double.parse(pokemon.formattedHeight),
+                          weight: double.parse(pokemon.formattedWeight),
+                          genderRate: pokemon.genderRate,
+                          eggGroups: pokemon.eggGroups,
+                          isDarkMode: isDarkMode,
                         ),
+                        const SizedBox(height: 20),
+                        if (pokemon.speciesId != null)
+                          evolutions_card.EvolutionChainCard(
+                            pokemonId: pokemon.id,
+                            speciesId: pokemon.speciesId!,
+                            isDarkMode: isDarkMode,
+                          ),
+                        const SizedBox(height: 20),
+                        // show abilities card
+                        abilities_card.AbilitiesCard(abilities: pokemon.abilities, isDarkMode: isDarkMode),
+                        const SizedBox(height: 12),
+                        // show moves card
+                        moves_card.MovesCard(moves: pokemon.moves, isDarkMode: isDarkMode),
+                        const SizedBox(height: 60),
                         const SizedBox(height: 60),
                       ],
                     ),
@@ -632,218 +498,7 @@ class DetailPageState extends State<PokeDetailPage> {
     );
   }
 
-// Helper method to build abilities container
-  Widget _buildAbilitiesContainer(List<dynamic>? abilities) {
-    if (abilities == null || abilities.isEmpty) {
-      return const SizedBox.shrink();
-    }
 
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.grey[800] : Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Abilities',
-            style: GoogleFonts.pressStart2p(
-              fontSize: 16,
-              color: Colors.red,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          ...abilities.map((abilityData) {
-            final ability = abilityData['ability'];
-            final isHidden = abilityData['is_hidden'] ?? false;
-
-            return Container(
-              margin: const EdgeInsets.only(bottom: 8),
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: isHidden ? Colors.orange.withOpacity(0.2) : Colors.blue.withOpacity(0.2),
-                borderRadius: BorderRadius.circular(8),
-                border: Border.all(
-                  color: isHidden ? Colors.orange : Colors.blue,
-                  width: 1,
-                ),
-              ),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Text(
-                              ability['name'] ?? 'Unknown',
-                              style: GoogleFonts.roboto(
-                                fontSize: 14,
-                                fontWeight: FontWeight.bold,
-                              ),
-                            ),
-                            if (isHidden) ...[
-                              const SizedBox(width: 8),
-                              Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                                decoration: BoxDecoration(
-                                  color: Colors.orange,
-                                  borderRadius: BorderRadius.circular(10),
-                                ),
-                                child: Text(
-                                  'HIDDEN',
-                                  style: GoogleFonts.roboto(
-                                    fontSize: 10,
-                                    color: Colors.white,
-                                    fontWeight: FontWeight.bold,
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ],
-                        ),
-                        if (ability['effect'] != null) ...[
-                          const SizedBox(height: 4),
-                          Text(
-                            ability['effect'],
-                            style: GoogleFonts.roboto(
-                              fontSize: 12,
-                              color: Colors.grey[600],
-                            ),
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        ],
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            );
-          }).toList(),
-        ],
-      ),
-    );
-  }
-
-// Helper method to build moves container
-  Widget _buildMovesContainer(List<dynamic>? moves) {
-    if (moves == null || moves.isEmpty) {
-      return const SizedBox.shrink();
-    }
-
-    // Group moves by level
-    final Map<int, List<Map<String, dynamic>>> movesByLevel = {};
-    for (var moveData in moves) {
-      final level = moveData['level'] as int? ?? 0;
-      final move = moveData['move'] as Map<String, dynamic>?;
-      if (move != null) {
-        movesByLevel.putIfAbsent(level, () => []).add(move);
-      }
-    }
-
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDarkMode ? Colors.grey[800] : Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.1),
-            spreadRadius: 2,
-            blurRadius: 5,
-            offset: const Offset(0, 3),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Moves by Level',
-            style: GoogleFonts.pressStart2p(
-              fontSize: 16,
-              color: Colors.red,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          const SizedBox(height: 12),
-          SizedBox(
-            height: 300,
-            child: ListView.builder(
-              itemCount: movesByLevel.keys.length,
-              itemBuilder: (context, index) {
-                final level = movesByLevel.keys.elementAt(index);
-                final levelMoves = movesByLevel[level]!;
-
-                return ExpansionTile(
-                  title: Text(
-                    level == 0 ? 'Base Moves' : 'Level $level',
-                    style: GoogleFonts.roboto(
-                      fontSize: 14,
-                      fontWeight: FontWeight.bold,
-                      color: Colors.blue,
-                    ),
-                  ),
-                  children: levelMoves.map((move) {
-                    return ListTile(
-                      dense: true,
-                      title: Text(
-                        move['name'] ?? 'Unknown Move',
-                        style: GoogleFonts.roboto(fontSize: 13),
-                      ),
-                      subtitle: Row(
-                        children: [
-                          if (move['pokemon_v2_type'] != null)
-                            Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-                              decoration: BoxDecoration(
-                                color: _getTypeColor(move['pokemon_v2_type']['name']),
-                                borderRadius: BorderRadius.circular(8),
-                              ),
-                              child: Text(
-                                move['pokemon_v2_type']['name'].toUpperCase(),
-                                style: GoogleFonts.roboto(
-                                  fontSize: 10,
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                            ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'PWR: ${move['power'] ?? '--'} | ACC: ${move['accuracy'] ?? '--'}% | PP: ${move['pp'] ?? '--'}',
-                            style: GoogleFonts.roboto(
-                              fontSize: 11,
-                              color: Colors.grey[600],
-                            ),
-                          ),
-                        ],
-                      ),
-                    );
-                  }).toList(),
-                );
-              },
-            ),
-          ),
-        ],
-      ),
-    );
-  }
 
 // Helper method to get type colors (reuse from PokeSelect)
   Color _getTypeColor(String? typeName) {
