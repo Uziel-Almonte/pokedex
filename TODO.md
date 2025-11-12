@@ -12,9 +12,9 @@ O - completo
 1. Interfaz de Usuario (UI/UX) — 25 %
 Lista de Pokémon
 
-I - Mostrar nombre, imagen, tipo(s) y número (#dex). 
+O - Mostrar nombre, imagen, tipo(s) y número (#dex). 
 
-I - Implementar barra de búsqueda con debounce (300–500 ms). 
+O - Implementar barra de búsqueda con debounce (300–500 ms).
 
 X - Diseño moderno, accesible y responsivo (Material 3). 
 
@@ -30,17 +30,17 @@ O - Si hay 2 tipos, mostrar ambos; si falta imagen oficial, usar sprite.
 
 O - Mostrar estadísticas base (HP, Atk, Def, SpA, SpD, Spe) y total. 
 
-X - Visualizar stats con radar chart o barras; incluir valores y porcentajes. 
+O - Visualizar stats con radar chart o barras; incluir valores y porcentajes. 
 
-X - Mostrar habilidades: nombre, si es oculta (isHidden == true) y efecto resumido (≤ 160 caracteres).
+O - Mostrar habilidades: nombre, si es oculta (isHidden == true) y efecto resumido (≤ 160 caracteres).
 
-X - Mostrar evoluciones (pre-evo → evo1 → evo2 / ramas) y triggers (nivel, objeto, intercambio, amistad, hora).
+O - Mostrar evoluciones (pre-evo → evo1 → evo2 / ramas) y triggers (nivel, objeto, intercambio, amistad, hora).
 
-X - Si no evoluciona, mostrar mensaje “No evoluciona”.
+O - Si no evoluciona, mostrar mensaje “No evoluciona”.
 
-X - Mostrar movimientos filtrables por método (level-up / TM / Tutor / Egg) y orden (nivel / nombre).
+I - Mostrar movimientos filtrables por método (level-up / TM / Tutor / Egg) y orden (nivel / nombre).
 
-X - Paginación local (≥ 20 sin lag).
+O - Paginación local (≥ 20 sin lag).
 
 X - Acciones: Favorito, Compartir, Abrir en mapa/regiones (si aplica).
 
@@ -56,27 +56,27 @@ X - Botón Shiny toggle (si existen assets).
 
 2. Uso de GraphQL — 10 %
 
-I - Integrar API GraphQL de PokeAPI.
+O - Integrar API GraphQL de PokeAPI.
 
-X - Implementar paginación basada en cursor.
+I - Implementar paginación basada en cursor.
 
-X - Agregar cache local y manejo de errores (timeout, rate limit, sin conexión).
+I - Agregar cache local y manejo de errores (timeout, rate limit, sin conexión).
 
 3. Gestión de Estado y Arquitectura — 15 %
 
-X - Usar arquitectura de 3 capas: data/, domain/, presentation/.
+O - Usar arquitectura de 3 capas: data/, domain/, presentation/.
 
-X - Utilizar Riverpod o BLoC (u otro gestor de estado).
+O - Utilizar Riverpod o BLoC (u otro gestor de estado).
 
-X - Separar modelos, DTOs y mapeos correctamente.
+O - Separar modelos, DTOs y mapeos correctamente.
 
 4. Filtrado y Ordenación — 10 %
 
-X - Filtrar Pokémon por nombre.
+O - Filtrar Pokémon por nombre.
 
-I - Agregar dropdown de filtros: tipo, generación, región, habilidad o poder.
+O - Agregar dropdown de filtros: tipo, generación, región, habilidad o poder.
 
-X - Ordenar por nombre, número o poder.
+I - Ordenar por nombre, número o poder.
 
 X - Mantener filtros activos entre sesiones.
 
@@ -96,7 +96,7 @@ X - Animar al agregar/quitar favoritos o cambiar de vista.
 
 7. Compartir Pokémon — 5 %
 
-I - Generar una Pokémon Card y compartirla como imagen.
+X - Generar una Pokémon Card y compartirla como imagen.
 
 8. Mapa Interactivo — 5 %
 

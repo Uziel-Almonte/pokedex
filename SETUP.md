@@ -13,6 +13,9 @@ This document details the setup and implementation steps for the Pokedex app, in
   - `graphql_flutter: ^5.0.1` for GraphQL API integration
   - `http: ^1.1.0` for HTTP requests (TCG card fetching)
   - `google_fonts: ^6.3.2` for custom Google Fonts styling (Press Start 2P retro font)
+  - `pie_chart: ^5.4.0` for pie chart visualization (gender ratios)
+  - `flutter_bloc: ^9.1.1` for BLoC state management pattern
+  - `equatable: ^2.0.0` for value equality in BLoC events/states
   - `cupertino_icons: ^1.0.8` for iOS-style icons
   - `flutter_lints: ^5.0.0` for recommended linting rules
   - `provider: ^6.1.5+1` for state management (theme switching)
@@ -24,7 +27,7 @@ This document details the setup and implementation steps for the Pokedex app, in
 - Created a `GraphQLService` singleton class to manage the GraphQL client globally.
 - Provided the client to the app using `GraphQLProvider`.
 
-## 4. GraphQL Service Class (graphql.dart)
+## 4. GraphQL Service Class (data/graphql.dart)
 - **Class**: `GraphQLService` (Singleton pattern)
   - Manages a single instance of `GraphQLClient` accessible throughout the app.
   - **Fields**:
@@ -37,30 +40,115 @@ This document details the setup and implementation steps for the Pokedex app, in
     - `mutate(String document, {Map<String, dynamic>? variables})`: Helper method to execute GraphQL mutations
   - **Usage**: Call `await GraphQLService().init()` once at app startup, then access the client anywhere with `GraphQLService().client`
 
-## 5. Main App Structure
-- **main.dart** contains all main logic and UI:
-  - `main()` function initializes the GraphQLService, and runs the app wrapped in GraphQLProvider and ChangeNotifierProvider (for theme state).
-  - `MyApp` (StatelessWidget): Root widget, sets up Material theme with Pokémon colors and home page. Includes light/dark theme support.
-  - `MyHomePage` (StatefulWidget): Main screen, displays Pokémon info with styled UI and buttons for navigation and viewing cards.
-  - `_MyHomePageState`: Handles state, fetching, and UI updates.
+## 4a. GraphQL Queries (data/queries.dart)
+Centralized GraphQL query definitions for data fetching:
 
-## 6. Fetching Pokémon Data
-- Function: `fetchPokemon(int id, GraphQLClient client)`
-  - Sends a GraphQL query to fetch a Pokémon species by its ID.
-  - Returns a map with the Pokémon's `id`, `name`, `types`, `sprites`, and **base stats** (HP, Attack, Defense, Special Attack, Special Defense, Speed).
-  - Query structure:
-    - `pokemonspecies` filtered by ID
-    - Nested `pokemons` → `pokemontypes` → `type` → `name`
-    - Nested `pokemons` → `pokemonsprites` → `sprites`
-    - Nested `pokemons` → `pokemonstats` → `base_stat` and `stat` → `name`
-  - Uses a `FutureBuilder` in the UI to display loading, error, or Pokémon data.
-  - The floating action button increments the counter, triggering a new fetch for the next Pokémon.
+### `fetchPokemonList()`
+- **Purpose**: Fetch paginated Pokémon list with dynamic filtering
+- **Parameters**:
+  - `client`: GraphQL client instance
+  - `_selectedType`: Filter by type (e.g., "fire", "water")
+  - `_selectedGeneration`: Filter by generation (1-9)
+  - `_selectedAbility`: Filter by ability name (case-insensitive)
+  - `sortOrder`: Sort direction ("asc" or "desc")
+  - `_counter`: Page number for pagination
+- **Features**:
+  - Dynamic WHERE clause construction based on active filters
+  - Offset-based pagination (50 items per page)
+  - Returns: List of Pokémon with id, name, types, abilities, generation
 
-- Function: `searchPokemonByName(String name, GraphQLClient client)`
-  - Searches for Pokémon by name using case-insensitive matching (PostgreSQL ILIKE operator).
-  - Uses `%name%` pattern matching to find Pokémon containing the search term.
-  - Returns the first matching Pokémon found.
-  - Includes same nested data as `fetchPokemon` (types, sprites, stats).
+### `searchPokemonByName()`
+- **Purpose**: Search for Pokémon by name
+- **Parameters**: `name` (string), `client` (GraphQLClient)
+- **Features**:
+  - Case-insensitive pattern matching (ILIKE operator)
+  - Returns up to 20 matching Pokémon
+  - Includes same data as list query
+
+### `fetchPokemon()`
+- **Purpose**: Fetch detailed information for a single Pokémon
+- **Returns**: Complete Pokémon data including:
+  - Basic info (id, name, height, weight)
+  - Types and type relationships
+  - Base stats (HP, Attack, Defense, Special Attack, Special Defense, Speed)
+  - Sprites (front/back, shiny variants)
+  - Abilities (normal and hidden)
+  - Gender ratio and egg groups
+  - Species information
+
+### `fetchEvolutionChain()`
+- **Purpose**: Fetch evolution chain for a Pokémon species
+- **Parameters**: `speciesId`, `client`
+- **Returns**: Evolution chain data including:
+  - All species in the chain
+  - Evolution triggers and conditions
+  - Evolution levels, items, or special requirements
+  - Min/max levels and happiness requirements
+
+### Query Architecture Benefits
+- **Centralization**: All queries in one file for easy maintenance
+- **Reusability**: Queries used by multiple BLoCs and components
+- **Type Safety**: Returns structured Dart Maps for type-safe access
+- **Performance**: Optimized queries fetch only needed data
+
+## 5. Main App Structure (3-Layer Architecture)
+
+### Data Layer (`lib/data/`)
+- **graphql.dart**: GraphQL service singleton for client management
+- **queries.dart**: All GraphQL query definitions
+- **Responsibilities**:
+  - Data fetching from APIs
+  - Caching with Hive
+  - Raw data transformation to Maps
+
+### Domain Layer (`lib/domain/`)
+- **home.dart**: Home page entry point and provider setup
+- **main.dart**: Main app entry point and detail page setup
+- **models/Pokemon.dart**: Pokémon data model
+- **state_management/**: BLoC classes for business logic
+  - `bloc_state_home.dart`: Home page BLoC (events, states, bloc)
+  - `bloc_state_main.dart`: Detail page BLoC
+- **Responsibilities**:
+  - Business logic and state management
+  - Data validation and transformation
+  - Routing and navigation logic
+
+### Presentation Layer (`lib/presentation/`)
+- **pages/**: Full page widgets
+  - `HomePageState.dart`: Home page UI and state
+  - `DetailPageState.dart`: Detail page UI and state
+- **page_necessities/**: Reusable page components
+  - `home_page/`: Components for home page (PokeSelect, filter dialog)
+  - `detail_page/`: Components for detail page (cards, TCG)
+- **app_theme.dart**: Theme definitions (light/dark)
+- **theme_provider.dart**: Theme state provider
+- **Responsibilities**:
+  - UI rendering and user interaction
+  - Visual design and styling
+  - Widget composition
+
+### Architecture Benefits
+- **Separation of Concerns**: Each layer has clear responsibilities
+- **Testability**: Easy to test each layer independently
+- **Maintainability**: Changes in one layer don't affect others
+- **Scalability**: Easy to add new features without breaking existing code
+- **Code Reusability**: Components can be reused across different pages
+
+## 6. App Initialization and Entry Points
+
+### Main Entry (`domain/main.dart`)
+- Initializes `GraphQLService` with PokeAPI endpoint
+- Sets up app with:
+  - `ChangeNotifierProvider` for theme management
+  - `GraphQLProvider` for GraphQL client access
+  - Material app with theme support
+  - Routes to home and detail pages
+
+### Home Entry (`domain/home.dart`)
+- Sets up home page with:
+  - `ChangeNotifierProvider` for theme state
+  - `BlocProvider` for home page state management
+  - Navigation between home and detail pages
 
 ## 7. Search Functionality with Debounce
 - **Search Bar** (TextField):
@@ -366,12 +454,73 @@ This document details the setup and implementation steps for the Pokedex app, in
   - Fallback UI for missing images
 
 ## 17. Development Notes
-- **State Management**: Uses Provider for theme state, local state for UI updates and filters
+- **Architecture**: Clean 3-layer architecture (data, domain, presentation)
+- **State Management**: BLoC pattern for business logic, Provider for theme state
 - **Performance**: Debounced search prevents excessive API calls
 - **Responsiveness**: UI updates smoothly with async operations
 - **Accessibility**: Theme support for user preferences
-- **Scalability**: Service classes separate concerns (data fetching vs UI)
+- **Scalability**: Service classes and BLoC separate concerns (data fetching vs business logic vs UI)
 - **Visual Design**: Type-based gradients provide intuitive visual feedback
+
+## 17a. BLoC State Management Pattern
+The app implements the BLoC (Business Logic Component) pattern using `flutter_bloc` package:
+
+### Home Page BLoC (`bloc_state_home.dart`)
+- **Events**:
+  - `LoadPokemonList`: Load Pokémon with filters (type, generation, ability, sort order)
+  - `LoadMorePokemon`: Pagination - load next page
+  - `SearchPokemon`: Search Pokémon by name with debounce
+  - `UpdateFilters`: Update active filters
+
+- **States**:
+  - `HomeLoading`: Initial loading state
+  - `HomeLoaded`: Successfully loaded Pokémon list
+  - `HomeError`: Error occurred during data fetch
+
+- **Benefits**:
+  - Separates UI from business logic
+  - Testable - events and states are easily unit tested
+  - Predictable state transitions
+  - Better code organization and maintainability
+
+### Detail Page BLoC (`bloc_state_main.dart`)
+- Manages Pokémon detail page state
+- Handles fetching individual Pokémon data
+- Coordinates multiple data sources (base info, stats, abilities, evolutions, moves)
+
+## 17b. Detail Page Components
+The detail page is modularized into reusable card components:
+
+### AbilitiesCard Component
+- Displays all Pokémon abilities
+- Highlights hidden abilities with orange badge
+- Shows ability effects (truncated to ≤160 characters)
+- Color-coded: blue for normal, orange for hidden
+
+### EvolutionChainCard Component
+- Fetches and displays complete evolution chain
+- Shows evolution triggers (level, stone, trade, etc.)
+- Handles branching evolutions
+- Displays "Does not evolve" message for non-evolving Pokémon
+- Clickable evolution sprites navigate to that Pokémon
+
+### MovesCard Component
+- Groups moves by level learned
+- Expandable sections for each level
+- Shows move type, power, accuracy, and PP
+- Currently displays level-up moves (TM/Tutor/Egg filtering in progress)
+
+### StatsCard Component
+- Displays all 6 base stats with color-coded bars
+- Visual representation: bars scale from 0-255 (max stat)
+- Shows total base stats
+- Color scheme: HP (red), ATK (orange), DEF (yellow), SpA (blue), SpD (green), SPE (pink)
+
+### PhysicalStatsCard Component
+- Shows height and weight with metric units
+- Displays egg groups for breeding information
+- Includes gender ratio pie chart using `pie_chart` package
+- Clean card design matching app theme
 
 ## 18. Future Enhancements
 - **Caching**: Store TCG card search results to avoid repeated API calls
@@ -390,14 +539,35 @@ This document details the setup and implementation steps for the Pokedex app, in
 ## 19. File Structure
 ```
 lib/
-├── main.dart                    # Main app entry, detail page UI
-├── home.dart                    # Home page with list, search, filters
-├── graphql.dart                 # GraphQL service singleton
-├── tcgCards.dart                # TCG API service for trading cards
-├── app_theme.dart               # Light/dark theme definitions
-├── theme_provider.dart          # Theme state management
-└── reusable_widgets/
-    └── PokeSelect.dart          # Reusable Pokémon card widget with gradients
+├── data/
+│   ├── graphql.dart              # GraphQL service singleton
+│   └── queries.dart              # GraphQL query definitions
+├── domain/
+│   ├── home.dart                 # Home page domain/entry point
+│   ├── main.dart                 # Main app entry/detail page domain
+│   ├── models/
+│   │   └── Pokemon.dart          # Pokemon model
+│   └── state_management/
+│       ├── bloc_state_home.dart  # BLoC for home page (events, states, logic)
+│       └── bloc_state_main.dart  # BLoC for main/detail page
+└── presentation/
+    ├── app_theme.dart            # Light/dark theme definitions
+    ├── theme_provider.dart       # Theme state management
+    ├── page_necessities/
+    │   ├── detail_page/
+    │   │   ├── AbilitiesCard.dart        # Abilities display with hidden indicator
+    │   │   ├── EvolutionChainCard.dart   # Evolution chain with triggers
+    │   │   ├── MovesCard.dart            # Moves by level display
+    │   │   ├── PhysicalStatsCard.dart    # Height, weight, egg groups
+    │   │   ├── StatsCard.dart            # Base stats with color bars
+    │   │   ├── showPokemonCards.dart     # TCG cards modal
+    │   │   └── tcgCards.dart             # TCG API service
+    │   └── home_page/
+    │       ├── PokeSelect.dart           # Pokémon card widget with gradients
+    │       └── showFilterDialog.dart     # Filter dialog (type, gen, ability)
+    └── pages/
+        ├── HomePageState.dart    # Home page UI state and logic
+        └── DetailPageState.dart  # Detail page UI state and logic
 ```
 
 ## 20. Running the App
