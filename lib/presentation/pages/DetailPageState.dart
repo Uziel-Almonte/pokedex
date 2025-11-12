@@ -54,7 +54,7 @@ class DetailPageState extends State<PokeDetailPage> {
   // This increments when the user presses the floating action button
   int _counter = 1;
 
-  bool get isDarkMode => Provider.of<AppThemeState>(context).isDarkMode;
+  bool get isDarkMode => Provider.of<AppThemeState>(context, listen: false).isDarkMode;
 
   // Text controller for search bar - manages the text input state
   // Allows us to read, clear, and listen to changes in the search field

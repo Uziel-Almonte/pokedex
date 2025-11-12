@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'dart:async';
 // Import GraphQL Flutter package for GraphQL client and widgets
 import 'package:graphql_flutter/graphql_flutter.dart';
 import 'package:provider/provider.dart';
@@ -9,7 +8,6 @@ import '../presentation/app_theme.dart';
 import '../data/graphql.dart';
 //fonts de google
 import '../presentation/theme_provider.dart';
-import 'package:provider/provider.dart';
 import '../presentation/pages/HomePageState.dart';
 import '../domain/state_management/bloc_state_home.dart';
 
@@ -35,7 +33,7 @@ void main() async {
   await GraphQLService().init();
   // Run the Flutter app, providing the GraphQL client to the widget tree
   runApp(
-    ChangeNotifierProvider(
+    ChangeNotifierProvider<AppThemeState>(
       create: (_) => AppThemeState(),
       child: GraphQLProvider(
         client: ValueNotifier(GraphQLService().client),
@@ -70,4 +68,3 @@ class MyApp extends StatelessWidget {
     );
   }
 }
-

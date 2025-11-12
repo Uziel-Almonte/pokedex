@@ -24,7 +24,7 @@ void main() async {
   await GraphQLService().init();
   // Run the Flutter app, providing the GraphQL client to the widget tree
   runApp(
-    ChangeNotifierProvider(
+    ChangeNotifierProvider<AppThemeState>(
       create: (_) => AppThemeState(),
       child: GraphQLProvider(
         client: ValueNotifier(GraphQLService().client),
@@ -68,4 +68,3 @@ class PokeDetailPage extends StatefulWidget {
   @override
   State<PokeDetailPage> createState() => DetailPageState();
 }
-

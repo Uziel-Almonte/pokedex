@@ -2,8 +2,8 @@
 import 'package:flutter/material.dart';
 //fonts de google
 import 'package:google_fonts/google_fonts.dart';
-// Import the TCG service for Pokémon trading cards
-import 'tcgCards.dart';
+// Import the TCG service for Pokémon trading cards from data layer
+import '../../../data/tcg_service.dart';
 
 
 
