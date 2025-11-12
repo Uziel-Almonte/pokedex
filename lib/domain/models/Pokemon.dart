@@ -23,13 +23,13 @@ class Pokemon {
 
   factory Pokemon.fromGraphQL(Map<String, dynamic> data) {
     // Extract types
-    final types = (data['pokemontypes'] as List<dynamic>?)
-        ?.map((t) => t['type']?['name'] as String?)
+    final types = (data['pokemon_v2_pokemontypes'] as List<dynamic>?)
+        ?.map((t) => t['pokemon_v2_type']?['name'] as String?)
         .whereType<String>()
         .toList() ?? ['Unknown'];
 
     // Extract stats
-    final statsData = (data['pokemonstats'] as List<dynamic>?) ?? [];
+    final statsData = (data['pokemon_v2_pokemonstats'] as List<dynamic>?) ?? [];
 
     // CREATE A MAP TO ORGANIZE STATS BY NAME
     // This map allows us to access stats by their name (e.g., 'hp', 'attack')
@@ -48,7 +48,7 @@ class Pokemon {
     // The API returns stats with structure: {base_stat: 45, stat: {name: "hp"}}
     // We extract both the name and value, then store in our map
     for (var stat in statsData) {
-      final statName = stat['stat']?['name'] as String?;
+      final statName = stat['pokemon_v2_stat']?['name'] as String?;
       final baseStat = stat['base_stat'] as int?;
       if (statName != null && baseStat != null) {
         statsMap[statName] = baseStat;
@@ -57,8 +57,8 @@ class Pokemon {
     }
 
     // Extract egg groups
-    final eggGroups = (data['pokemonspecy']?['pokemonegggroups'] as List<dynamic>?)
-        ?.map((eg) => eg['egggroup']?['name'] as String?)
+    final eggGroups = (data['pokemon_v2_pokemonspecy']?['pokemon_v2_pokemonegggroups'] as List<dynamic>?)
+        ?.map((eg) => eg['pokemon_v2_egggroup']?['name'] as String?)
         .whereType<String>()
         .join(', ') ?? 'Unknown';
 
@@ -70,7 +70,7 @@ class Pokemon {
       weight: data['weight'] as int?,
       stats: statsMap,
       totalStats: total,
-      genderRate: data['pokemonspecy']?['gender_rate'] as int?,
+      genderRate: data['pokemon_v2_pokemonspecy']?['gender_rate'] as int?,
       eggGroups: eggGroups,
     );
   }

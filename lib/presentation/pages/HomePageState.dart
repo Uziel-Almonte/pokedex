@@ -319,8 +319,8 @@ class HomePageState extends State<home_page.PokeHomePage> {
               }
 
               final pokemon = state.pokemonList[index];
-              final types = (pokemon['pokemontypes'] as List<dynamic>?)
-                  ?.map((t) => t['type']?['name'] as String?)
+              final types = (pokemon['pokemon_v2_pokemontypes'] as List<dynamic>?)
+                  ?.map((t) => t['pokemon_v2_type']?['name'] as String?)
                   .whereType<String>()
                   .join(', ') ??
                   'Unknown';
