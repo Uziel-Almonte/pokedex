@@ -27,7 +27,7 @@ This document details the setup and implementation steps for the Pokedex app, in
 - Created a `GraphQLService` singleton class to manage the GraphQL client globally.
 - Provided the client to the app using `GraphQLProvider`.
 
-## 4. GraphQL Service Class (graphql.dart)
+## 4. GraphQL Service Class (data/graphql.dart)
 - **Class**: `GraphQLService` (Singleton pattern)
   - Manages a single instance of `GraphQLClient` accessible throughout the app.
   - **Fields**:
@@ -40,30 +40,115 @@ This document details the setup and implementation steps for the Pokedex app, in
     - `mutate(String document, {Map<String, dynamic>? variables})`: Helper method to execute GraphQL mutations
   - **Usage**: Call `await GraphQLService().init()` once at app startup, then access the client anywhere with `GraphQLService().client`
 
-## 5. Main App Structure
-- **main.dart** contains all main logic and UI:
-  - `main()` function initializes the GraphQLService, and runs the app wrapped in GraphQLProvider and ChangeNotifierProvider (for theme state).
-  - `MyApp` (StatelessWidget): Root widget, sets up Material theme with Pokémon colors and home page. Includes light/dark theme support.
-  - `MyHomePage` (StatefulWidget): Main screen, displays Pokémon info with styled UI and buttons for navigation and viewing cards.
-  - `_MyHomePageState`: Handles state, fetching, and UI updates.
+## 4a. GraphQL Queries (data/queries.dart)
+Centralized GraphQL query definitions for data fetching:
 
-## 6. Fetching Pokémon Data
-- Function: `fetchPokemon(int id, GraphQLClient client)`
-  - Sends a GraphQL query to fetch a Pokémon species by its ID.
-  - Returns a map with the Pokémon's `id`, `name`, `types`, `sprites`, and **base stats** (HP, Attack, Defense, Special Attack, Special Defense, Speed).
-  - Query structure:
-    - `pokemonspecies` filtered by ID
-    - Nested `pokemons` → `pokemontypes` → `type` → `name`
-    - Nested `pokemons` → `pokemonsprites` → `sprites`
-    - Nested `pokemons` → `pokemonstats` → `base_stat` and `stat` → `name`
-  - Uses a `FutureBuilder` in the UI to display loading, error, or Pokémon data.
-  - The floating action button increments the counter, triggering a new fetch for the next Pokémon.
+### `fetchPokemonList()`
+- **Purpose**: Fetch paginated Pokémon list with dynamic filtering
+- **Parameters**:
+  - `client`: GraphQL client instance
+  - `_selectedType`: Filter by type (e.g., "fire", "water")
+  - `_selectedGeneration`: Filter by generation (1-9)
+  - `_selectedAbility`: Filter by ability name (case-insensitive)
+  - `sortOrder`: Sort direction ("asc" or "desc")
+  - `_counter`: Page number for pagination
+- **Features**:
+  - Dynamic WHERE clause construction based on active filters
+  - Offset-based pagination (50 items per page)
+  - Returns: List of Pokémon with id, name, types, abilities, generation
 
-- Function: `searchPokemonByName(String name, GraphQLClient client)`
-  - Searches for Pokémon by name using case-insensitive matching (PostgreSQL ILIKE operator).
-  - Uses `%name%` pattern matching to find Pokémon containing the search term.
-  - Returns the first matching Pokémon found.
-  - Includes same nested data as `fetchPokemon` (types, sprites, stats).
+### `searchPokemonByName()`
+- **Purpose**: Search for Pokémon by name
+- **Parameters**: `name` (string), `client` (GraphQLClient)
+- **Features**:
+  - Case-insensitive pattern matching (ILIKE operator)
+  - Returns up to 20 matching Pokémon
+  - Includes same data as list query
+
+### `fetchPokemon()`
+- **Purpose**: Fetch detailed information for a single Pokémon
+- **Returns**: Complete Pokémon data including:
+  - Basic info (id, name, height, weight)
+  - Types and type relationships
+  - Base stats (HP, Attack, Defense, Special Attack, Special Defense, Speed)
+  - Sprites (front/back, shiny variants)
+  - Abilities (normal and hidden)
+  - Gender ratio and egg groups
+  - Species information
+
+### `fetchEvolutionChain()`
+- **Purpose**: Fetch evolution chain for a Pokémon species
+- **Parameters**: `speciesId`, `client`
+- **Returns**: Evolution chain data including:
+  - All species in the chain
+  - Evolution triggers and conditions
+  - Evolution levels, items, or special requirements
+  - Min/max levels and happiness requirements
+
+### Query Architecture Benefits
+- **Centralization**: All queries in one file for easy maintenance
+- **Reusability**: Queries used by multiple BLoCs and components
+- **Type Safety**: Returns structured Dart Maps for type-safe access
+- **Performance**: Optimized queries fetch only needed data
+
+## 5. Main App Structure (3-Layer Architecture)
+
+### Data Layer (`lib/data/`)
+- **graphql.dart**: GraphQL service singleton for client management
+- **queries.dart**: All GraphQL query definitions
+- **Responsibilities**:
+  - Data fetching from APIs
+  - Caching with Hive
+  - Raw data transformation to Maps
+
+### Domain Layer (`lib/domain/`)
+- **home.dart**: Home page entry point and provider setup
+- **main.dart**: Main app entry point and detail page setup
+- **models/Pokemon.dart**: Pokémon data model
+- **state_management/**: BLoC classes for business logic
+  - `bloc_state_home.dart`: Home page BLoC (events, states, bloc)
+  - `bloc_state_main.dart`: Detail page BLoC
+- **Responsibilities**:
+  - Business logic and state management
+  - Data validation and transformation
+  - Routing and navigation logic
+
+### Presentation Layer (`lib/presentation/`)
+- **pages/**: Full page widgets
+  - `HomePageState.dart`: Home page UI and state
+  - `DetailPageState.dart`: Detail page UI and state
+- **page_necessities/**: Reusable page components
+  - `home_page/`: Components for home page (PokeSelect, filter dialog)
+  - `detail_page/`: Components for detail page (cards, TCG)
+- **app_theme.dart**: Theme definitions (light/dark)
+- **theme_provider.dart**: Theme state provider
+- **Responsibilities**:
+  - UI rendering and user interaction
+  - Visual design and styling
+  - Widget composition
+
+### Architecture Benefits
+- **Separation of Concerns**: Each layer has clear responsibilities
+- **Testability**: Easy to test each layer independently
+- **Maintainability**: Changes in one layer don't affect others
+- **Scalability**: Easy to add new features without breaking existing code
+- **Code Reusability**: Components can be reused across different pages
+
+## 6. App Initialization and Entry Points
+
+### Main Entry (`domain/main.dart`)
+- Initializes `GraphQLService` with PokeAPI endpoint
+- Sets up app with:
+  - `ChangeNotifierProvider` for theme management
+  - `GraphQLProvider` for GraphQL client access
+  - Material app with theme support
+  - Routes to home and detail pages
+
+### Home Entry (`domain/home.dart`)
+- Sets up home page with:
+  - `ChangeNotifierProvider` for theme state
+  - `BlocProvider` for home page state management
+  - Navigation between home and detail pages
 
 ## 7. Search Functionality with Debounce
 - **Search Bar** (TextField):
