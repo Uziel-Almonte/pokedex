@@ -247,20 +247,17 @@ class HomePageState extends State<home_page.PokeHomePage> {
                     final currentState = state;
                     final result = await show_filter_dialog.showFilterDialog(
                       context,
-                      currentState is HomeLoaded
-                          ? currentState.selectedType
-                          : null,
-                      currentState is HomeLoaded ? currentState
-                          .selectedGeneration : null,
-                      currentState is HomeLoaded
-                          ? currentState.selectedAbility
-                          : null,
+                      currentState is HomeLoaded ? currentState.selectedType : null,
+                      currentState is HomeLoaded ? currentState.selectedGeneration : null,
+                      currentState is HomeLoaded ? currentState.selectedAbility : null,
+                      currentState is HomeLoaded ? currentState.sortOrder : 'asc',
                     );
                     if (result != null && mounted) {
                       context.read<HomeBloc>().add(UpdateFilters(
                         type: result['type'],
                         generation: result['generation'],
                         ability: result['ability'],
+                        sortOrder: result['sortOrder'],
                       ));
                     }
                   },

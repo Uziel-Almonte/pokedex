@@ -17,7 +17,7 @@ import 'package:google_fonts/google_fonts.dart';
 // Example: HP          45           [████████░░░░░░░░░░]
 //
 // RETURNS: A Row widget containing the stat display
-Future<Map<String, dynamic>?> showFilterDialog(BuildContext context, String? _selectedType, int? _selectedGeneration, String? _selectedAbility) {
+Future<Map<String, dynamic>?> showFilterDialog(BuildContext context, String? _selectedType, int? _selectedGeneration, String? _selectedAbility, String _sortOrder) {
   return showDialog<Map<String, dynamic>>(
     context: context,
     builder: (BuildContext context) {
@@ -33,6 +33,40 @@ Future<Map<String, dynamic>?> showFilterDialog(BuildContext context, String? _se
                 mainAxisSize: MainAxisSize.min,
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
+                  Text('Sort Order:', style: GoogleFonts.roboto(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: const Text('Ascending', style: TextStyle(fontSize: 12)),
+                          value: 'asc',
+                          groupValue: _sortOrder,
+                          onChanged: (value) {
+                            setDialogState(() {
+                              _sortOrder = value!;
+                            });
+                          },
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: const Text('Descending', style: TextStyle(fontSize: 12)),
+                          value: 'desc',
+                          groupValue: _sortOrder,
+                          onChanged: (value) {
+                            setDialogState(() {
+                              _sortOrder = value!;
+                            });
+                          },
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ],
+                  ),
                   // FILTRO POR TIPO
                   Text('Type:', style: GoogleFonts.roboto(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
@@ -120,6 +154,7 @@ Future<Map<String, dynamic>?> showFilterDialog(BuildContext context, String? _se
                     _selectedType = null;
                     _selectedGeneration = null;
                     _selectedAbility = null;
+                    _sortOrder = 'asc';
                   });
                 },
                 child: const Text('Clear All'),
@@ -131,6 +166,7 @@ Future<Map<String, dynamic>?> showFilterDialog(BuildContext context, String? _se
                     'type': _selectedType,
                     'generation': _selectedGeneration,
                     'ability': _selectedAbility,
+                    'sortOrder': _sortOrder,
                   });
                 },
                 style: ElevatedButton.styleFrom(

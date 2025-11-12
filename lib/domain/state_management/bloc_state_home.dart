@@ -16,16 +16,18 @@ class LoadPokemonList extends HomeEvent {
   final String? selectedType;
   final int? selectedGeneration;
   final String? selectedAbility;
+  final String? sortOrder;
 
   const LoadPokemonList({
     required this.pokemonId,
     this.selectedType,
     this.selectedGeneration,
     this.selectedAbility,
+    this.sortOrder,
   });
 
   @override
-  List<Object?> get props => [pokemonId, selectedType, selectedGeneration, selectedAbility];
+  List<Object?> get props => [pokemonId, selectedType, selectedGeneration, selectedAbility, sortOrder];
 }
 
 class LoadMorePokemon extends HomeEvent {
@@ -45,8 +47,9 @@ class UpdateFilters extends HomeEvent {
   final String? type;
   final int? generation;
   final String? ability;
+  final String? sortOrder;
 
-  const UpdateFilters({this.type, this.generation, this.ability});
+  const UpdateFilters({this.type, this.generation, this.ability, this.sortOrder});
 
   @override
   List<Object?> get props => [type, generation, ability];
@@ -71,6 +74,7 @@ class HomeLoaded extends HomeState {
   final String? selectedType;
   final int? selectedGeneration;
   final String? selectedAbility;
+  final String sortOrder;
   final bool hasReachedMax;
 
   const HomeLoaded({
@@ -80,6 +84,7 @@ class HomeLoaded extends HomeState {
     this.selectedType,
     this.selectedGeneration,
     this.selectedAbility,
+    this.sortOrder='asc',
     this.hasReachedMax = false,
   });
 
@@ -91,6 +96,7 @@ class HomeLoaded extends HomeState {
     selectedType,
     selectedGeneration,
     selectedAbility,
+    sortOrder,
     hasReachedMax,
   ];
 
@@ -102,6 +108,7 @@ class HomeLoaded extends HomeState {
     int? selectedGeneration,
     String? selectedAbility,
     bool? hasReachedMax,
+    String? sortOrder,
   }) {
     return HomeLoaded(
       pokemonList: pokemonList ?? this.pokemonList,
@@ -111,6 +118,7 @@ class HomeLoaded extends HomeState {
       selectedGeneration: selectedGeneration ?? this.selectedGeneration,
       selectedAbility: selectedAbility ?? this.selectedAbility,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
+      sortOrder: sortOrder ?? this.sortOrder,
     );
   }
 }
@@ -147,6 +155,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         event.selectedType,
         event.selectedGeneration,
         event.selectedAbility,
+        event.sortOrder ?? 'asc',
         1, // Start from page 1
       );
 
@@ -156,6 +165,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         selectedType: event.selectedType,
         selectedGeneration: event.selectedGeneration,
         selectedAbility: event.selectedAbility,
+        sortOrder: event.sortOrder ?? 'asc',
         hasReachedMax: pokemonList.length < _pageSize,
       ));
     } catch (e) {
@@ -180,6 +190,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           currentState.selectedType,
           currentState.selectedGeneration,
           currentState.selectedAbility,
+          currentState.sortOrder,
           nextPage,
         );
 
@@ -292,6 +303,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       selectedType: event.type,
       selectedGeneration: event.generation,
       selectedAbility: event.ability,
+      sortOrder: event.sortOrder ?? 'asc',
     ));
   }
 }

@@ -113,7 +113,7 @@ class PokeSelect extends StatelessWidget {
     // Extraer información del Pokémon del objeto Map
     final pokemonName = pokemon['name']  ?? 'Unknown'; // Nombre del Pokémon
     final pokemonId = pokemon['id'] ?? '0'; // ID del Pokémon para la imagen
-
+    final imageURL = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$pokemonId.png';
     return GestureDetector( // Detecta toques/clics en la tarjeta
       onTap: onTap, // Ejecuta el callback cuando se toca la tarjeta
       child: Container(
@@ -143,9 +143,16 @@ class PokeSelect extends StatelessWidget {
             // ==================================================================
             // Cargar imagen oficial del Pokémon desde el repositorio de sprites
             Image.network(
-              'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$pokemonId.png',
-              height: 100,
-              width: 100,
+              imageURL,
+              height: 60,
+              width: 60,
+              errorBuilder: (context, error, stackTrace) {
+                return Image.network(
+                  'https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/i/8a5d5bc8-94fe-46e1-ac40-03969b602a62/dg4mjun-6ca3d4fd-44d1-4587-9152-7f817fa1a4c0.png/v1/fill/w_457,h_497/pokeball_recycle_bin_icon_empty_v2_by_blacklem00n_dg4mjun-fullview.png', // Use local asset as fallback
+                  height: 60,
+                  width: 60,
+                );
+              },
             ),
             const SizedBox(height: 20),
 

@@ -1,19 +1,19 @@
 import 'package:graphql_flutter/graphql_flutter.dart';
 
-Future<List<Map<String, dynamic>>> fetchPokemonList(GraphQLClient client, String? _selectedType, int? _selectedGeneration, String? _selectedAbility, int _counter) async {
+Future<List<Map<String, dynamic>>> fetchPokemonList(GraphQLClient client, String? _selectedType, int? _selectedGeneration, String? _selectedAbility, String sortOrder, int _counter) async {
   // Construir condiciones de filtro dinámicamente
   final whereConditions = <String>[];
 
   if (_selectedType != null) {
-    whereConditions.add('pokemontypes: {type: {name: {_eq: "$_selectedType"}}}');
+    whereConditions.add('pokemon_v2_pokemontypes: {pokemon_v2_type: {name: {_eq: "$_selectedType"}}}');
   }
 
   if (_selectedGeneration != null) {
-    whereConditions.add('pokemonspecy: {generation_id: {_eq: $_selectedGeneration}}');
+    whereConditions.add('pokemon_v2_pokemonspecy: {generation_id: {_eq: $_selectedGeneration}}');
   }
 
   if (_selectedAbility != null) {
-    whereConditions.add('pokemonabilities: {ability: {name: {_ilike: "%$_selectedAbility%"}}}');
+    whereConditions.add('pokemon_v2_pokemonabilities: {pokemon_v2_ability: {name: {_ilike: "%$_selectedAbility%"}}}');
   }
 
   // Build the WHERE clause
@@ -24,7 +24,7 @@ Future<List<Map<String, dynamic>>> fetchPokemonList(GraphQLClient client, String
 
   final query = '''
     query GetPokemonList {
-      pokemon_v2_pokemon($whereClause limit: 50, offset: ${(_counter - 1) * 50}, order_by: {id: asc}) { 
+      pokemon_v2_pokemon($whereClause limit: 50, offset: ${(_counter - 1) * 50}, order_by: {id: $sortOrder}) { 
         id 
         name 
         pokemon_v2_pokemontypes {
