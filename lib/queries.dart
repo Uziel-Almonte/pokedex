@@ -18,16 +18,16 @@ Future<List<Map<String, dynamic>>> fetchPokemonList(GraphQLClient client, String
 
   final query = '''
     query GetPokemonList {
-      pokemon(limit: 20, offset: ${(_counter - 1) * 20}) { 
+      pokemon_v2_pokemon(limit: 20, offset: ${(_counter - 1) * 20}) { 
         id 
         name 
-        pokemontypes {
-          type {
+        pokemon_v2_pokemontypes {
+          pokemon_v2_type {
             name 
           }
         }
-        pokemonabilities {
-          ability {
+        pokemon_v2_pokemonabilities {
+          pokemon_v2_ability {
             name
           }
         }
@@ -37,7 +37,7 @@ Future<List<Map<String, dynamic>>> fetchPokemonList(GraphQLClient client, String
   // Execute the query using the GraphQL client
   final result = await client.query(QueryOptions(document: gql(query)));
   // Extract the species data from the result
-  final pokemons = result.data?['pokemon'] as List<dynamic>?;
+  final pokemons = result.data?['pokemon_v2_pokemon'] as List<dynamic>?;
   // Return the first species if available, otherwise null
   return pokemons?.cast<Map<String, dynamic>>() ?? [];
 }
@@ -49,26 +49,26 @@ Future<Map<String, dynamic>?> fetchPokemon(int id, GraphQLClient client) async {
   // Now includes base stats (HP, Attack, Defense, Special Attack, Special Defense, Speed)
   final query = '''
       query GetPokemonById {
-        pokemon(where: {id: {_eq: $id}}) {
+        pokemon_v2_pokemon(where: {id: {_eq: $id}}) {
           id
           name
           height
           weight
-          pokemontypes{
-              type{
+          pokemon_v2_pokemontypes{
+              pokemon_v2_type{
                  name
               }
           }
-          pokemonstats{
+          pokemon_v2_pokemonstats{
             base_stat
-            stat{
+            pokemon_v2_stat{
               name
             }
           }
-          pokemonspecy {
+          pokemon_v2_pokemonspecy {
             gender_rate
-            pokemonegggroups {
-              egggroup {
+            pokemon_v2_pokemonegggroups {
+              pokemon_v2_egggroup {
                 name
               }
             }
@@ -79,7 +79,7 @@ Future<Map<String, dynamic>?> fetchPokemon(int id, GraphQLClient client) async {
   // Execute the query using the GraphQL client
   final result = await client.query(QueryOptions(document: gql(query)));
   // Extract the species data from the result
-  final species = result.data?['pokemon'];
+  final species = result.data?['pokemon_v2_pokemon'];
   // Return the first species if available, otherwise null
   return (species != null && species.isNotEmpty) ? species[0] : null;
 }
@@ -91,16 +91,16 @@ Future<List<Map<String, dynamic>>> searchPokemonByName(String name, GraphQLClien
   // Example: searching "pika" will match "pikachu"
   final query = '''
     query SearchPokemonByName {
-      pokemon(where: {name: {_ilike: "%$name%"}}, limit: 20) {
+      pokemon_v2_pokemon(where: {name: {_ilike: "%$name%"}}, limit: 20) {
         id
         name
-        pokemontypes {
-          type {
+        pokemon_v2_pokemontypes {
+          pokemon_v2_type {
             name
           }
         }
-        pokemonabilities {
-          ability {
+        pokemon_v2_pokemonabilities {
+          pokemon_v2_ability {
             name
           }
         }
@@ -110,7 +110,7 @@ Future<List<Map<String, dynamic>>> searchPokemonByName(String name, GraphQLClien
   // Execute the query using the GraphQL client
   final result = await client.query(QueryOptions(document: gql(query)));
   // Extract the species data from the result
-  final pokemons = result.data?['pokemon'] as List<dynamic>?;
+  final pokemons = result.data?['pokemon_v2_pokemon'] as List<dynamic>?;
   // Return the first species if available, otherwise null
   return pokemons?.cast<Map<String, dynamic>>() ?? [];
 }

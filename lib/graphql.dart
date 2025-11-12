@@ -11,7 +11,7 @@ import 'package:graphql_flutter/graphql_flutter.dart';
       /*inicializacion hive y cliente, se hace una llamada
   al cliente para inicializarlo y se manda error si no inicializa*/
       Future<void> init(
-          {String uri = 'https://graphql.pokeapi.co/v1beta2'}) async {
+          {String uri = 'https://beta.pokeapi.co/graphql/v1beta'}) async {
         await initHiveForFlutter();
         final httpLink = HttpLink(uri);
         _client = GraphQLClient(

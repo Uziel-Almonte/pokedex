@@ -327,8 +327,8 @@ class _MyHomePageState extends State<PokeHomePage> {
                   itemCount: snapshot.data!.length,
                   itemBuilder: (context, index) {
                     final pokemon = snapshot.data![index];
-                    final types = (pokemon['pokemontypes'] as List<dynamic>?)
-                        ?.map((t) => t['type']?['name'] as String?)
+                    final types = (pokemon['pokemon_v2_pokemontypes'] as List<dynamic>?)
+                        ?.map((t) => t['pokemon_v2_type']?['name'] as String?)
                         .whereType<String>()
                         .join(', ') ?? 'Unknown';
 

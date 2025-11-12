@@ -545,25 +545,25 @@ class _MyHomePageState extends State<PokeDetailPage> {
                   // Extract types from the nested structure
                   //final pokemons = (pokemon['pokemons'] as List<dynamic>?) ?? [];
 
-                  final types = (pokemon['pokemontypes'] as List<dynamic>?)
-                      ?.map((t) => t['type']?['name'] as String?)
+                  final types = (pokemon['pokemon_v2_pokemontypes'] as List<dynamic>?)
+                      ?.map((t) => t['pokemon_v2_type']?['name'] as String?)
                       .whereType<String>()
                       .join(', ') ?? 'Unknown';
 
                   // EXTRACT BASE STATS FROM GRAPHQL RESPONSE
                   // Stats include: HP, Attack, Defense, Special Attack, Special Defense, Speed
                   // The API returns these in a nested structure: pokemons -> pokemonstats -> stat/base_stat
-                  final stats = (pokemon['pokemonstats'] as List<dynamic>?) ?? [];
+                  final stats = (pokemon['pokemon_v2_pokemonstats'] as List<dynamic>?) ?? [];
 
 
                   final height = ((pokemon['height']/10) * 3.28084).toStringAsFixed(1);
                   final weight = ((pokemon['weight']/10) * 2.20462).toStringAsFixed(1);
 
                   // Extract gender_rate with null safety
-                  final genderRate = pokemon['pokemonspecy']?['gender_rate'] as int?;
+                  final genderRate = pokemon['pokemon_v2_pokemonspecy']?['gender_rate'] as int?;
 
-                  final eggGroups = (pokemon['pokemonspecy']?['pokemonegggroups'] as List<dynamic>?)
-                      ?.map((eg) => eg['egggroup']?['name'] as String?)
+                  final eggGroups = (pokemon['pokemon_v2_pokemonspecy']?['pokemon_v2_pokemonegggroups'] as List<dynamic>?)
+                      ?.map((eg) => eg['pokemon_v2_egggroup']?['name'] as String?)
                       .whereType<String>()
                       .join(', ') ?? 'Unknown';
 
@@ -583,7 +583,7 @@ class _MyHomePageState extends State<PokeDetailPage> {
                   // The API returns stats with structure: {base_stat: 45, stat: {name: "hp"}}
                   // We extract both the name and value, then store in our map
                   for (var stat in stats) {
-                    final statName = stat['stat']?['name'] as String?; // Get stat name (e.g., "hp", "attack")
+                    final statName = stat['pokemon_v2_stat']?['name'] as String?; // Get stat name (e.g., "hp", "attack")
                     final baseStat = stat['base_stat'] as int?; // Get stat value (e.g., 45, 60)
 
                     // Only add to map if both name and value exist (null safety)
