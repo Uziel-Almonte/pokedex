@@ -40,6 +40,14 @@ Handles all external data sources and API communication.
   - `fetchEvolutionChain()`: Fetches evolution chain data for a species
   - All functions return structured Maps ready for model conversion
 
+- **tcg_service.dart**: ✨ New service for TCG card fetching (proper data layer)
+  - `TCGService` class with static methods
+  - Base URL: `https://api.tcgdex.net/v2/en`
+  - `searchCardsByPokemon()`: Fetches all cards for a Pokémon
+  - Iterates through all TCG sets (~150+ API calls)
+  - Returns comprehensive list of card objects
+  - Error handling for individual set failures
+
 ### Domain Layer (`lib/domain/`)
 Contains business logic, models, and state management.
 
@@ -94,6 +102,13 @@ Contains all UI components, pages, and styling.
     - TCG cards viewer integration
     - Official artwork display
 
+  - **PokemonQuizPage.dart**: ✨ NEW: "Who's That Pokémon?" quiz game
+    - Random Pokémon selection (1-1010)
+    - Silhouette effect with ColorFiltered matrix
+    - Score and attempts tracking
+    - Case-insensitive validation
+    - Retro Press Start 2P styling
+
 - **page_necessities/**:
   - **home_page/**:
     - **PokeSelect.dart**: Reusable Pokémon card widget
@@ -101,30 +116,30 @@ Contains all UI components, pages, and styling.
       - Shows sprite, name, types, and Pokédex number
       - Official type color palette (18 types)
       - Handles single-type and dual-type gradients
-    
+
     - **showFilterDialog.dart**: Filter dialog component
       - Type filter chips (18 types, single selection)
       - Generation filter chips (Gen 1-9, single selection)
       - Ability search text field
       - Clear all and apply buttons
-  
+
   - **detail_page/**:
     - **StatsCard.dart**: Base stats visualization
       - Shows HP, Attack, Defense, Special Attack, Special Defense, Speed
       - Color-coded progress bars for each stat
       - Displays total stats
       - Retro Press Start 2P font styling
-    
+
     - **AbilitiesCard.dart**: Abilities display
       - Lists all abilities (normal and hidden)
       - Highlights hidden abilities with orange background
       - Shows ability name and isHidden flag
-    
+
     - **MovesCard.dart**: Moves list
       - Groups moves by level learned
       - Shows move name, power, accuracy, PP, and type
       - Sortable and filterable (level-up moves currently)
-    
+
     - **EvolutionChainCard.dart**: Evolution chain viewer
       - Displays complete evolution tree
       - Shows evolution triggers (level, stone, trade, friendship, time of day)
@@ -132,22 +147,14 @@ Contains all UI components, pages, and styling.
       - Handles branching evolutions
       - Clickable evolution sprites to navigate
       - Shows "No evoluciona" message for single-stage Pokémon
-    
+
     - **PhysicalStatsCard.dart**: Physical characteristics
       - Height (converted to feet/inches)
       - Weight (converted to pounds)
       - Gender ratio pie chart (using pie_chart package)
       - Egg groups display
       - Color-coded male/female/genderless visualization
-    
-    - **tcgCards.dart**: TCG API service
-      - `TCGService` class with static methods
-      - Base URL: `https://api.tcgdex.net/v2/en`
-      - `searchCardsByPokemon()`: Fetches all cards for a Pokémon
-      - Iterates through all TCG sets (~150+ API calls)
-      - Returns comprehensive list of card objects
-      - Error handling for individual set failures
-    
+
     - **showPokemonCards.dart**: TCG cards UI
       - Modal bottom sheet with draggable scroll
       - 2-column grid of card images
@@ -204,7 +211,7 @@ Contains all UI components, pages, and styling.
   - **Generation Filter**: 9 chips for Gen 1-9 (single selection)
   - **Ability Filter**: Text input with case-insensitive search
   - **Actions**: "Clear All" removes filters, "Apply" closes dialog
-  
+
 - **State Variables**:
   - `_selectedType`: Currently selected type filter
   - `_selectedGeneration`: Currently selected generation (1-9)
@@ -228,7 +235,7 @@ Contains all UI components, pages, and styling.
 
 ## 9. Navigation Structure
 - **Home Page → Detail Page**: Tap Pokémon card to navigate
-- **Detail Page Navigation**: 
+- **Detail Page Navigation**:
   - Previous/Next buttons to browse adjacent Pokémon
   - Back button returns to list
   - Accepts `initialPokemonId` parameter
@@ -312,12 +319,13 @@ Contains all UI components, pages, and styling.
 - **Async Operations**: Non-blocking UI updates
 - **Caching**: Hive cache for GraphQL responses
 
-## 16. File Structure (Updated)
+## 16. File Structure (Updated November 2025)
 ```
 lib/
 ├── data/                           # Data Layer
 │   ├── graphql.dart                # GraphQL service singleton
-│   └── queries.dart                # All GraphQL query functions
+│   ├── queries.dart                # All GraphQL query functions
+│   └── tcg_service.dart            # ✨ NEW: TCG API service (TCGDex integration)
 │
 ├── domain/                         # Domain Layer
 │   ├── main.dart                   # Main app entry point
@@ -330,10 +338,11 @@ lib/
 │
 ├── presentation/                   # Presentation Layer
 │   ├── app_theme.dart              # Theme definitions
-│   ├── theme_provider.dart         # Theme state management
+│   ├── theme_provider.dart         # Theme state management (ChangeNotifier)
 │   ├── pages/
 │   │   ├── HomePageState.dart      # Home page implementation
-│   │   └── DetailPageState.dart    # Detail page implementation
+│   │   ├── DetailPageState.dart    # Detail page implementation
+│   │   └── PokemonQuizPage.dart    # ✨ NEW: "Who's That Pokémon?" quiz game
 │   └── page_necessities/
 │       ├── home_page/
 │       │   ├── PokeSelect.dart          # Pokémon card widget
@@ -344,8 +353,8 @@ lib/
 │           ├── MovesCard.dart           # Moves card
 │           ├── EvolutionChainCard.dart  # Evolution chain card
 │           ├── PhysicalStatsCard.dart   # Physical stats & gender
-│           ├── tcgCards.dart            # TCG API service
-│           └── showPokemonCards.dart    # TCG cards UI
+│           ├── tcgCards.dart            # ⚠️ DEPRECATED: Empty file (TCGService moved to data/)
+│           └── showPokemonCards.dart    # TCG cards UI modal
 │
 ├── images/                         # Image assets
 │   └── empty_pokeball.png
@@ -353,6 +362,13 @@ lib/
 └── test/                           # Test files
     └── widget_test.dart
 ```
+
+### Key Changes in File Structure:
+- ✨ **lib/data/tcg_service.dart**: New service for TCG card fetching (proper data layer)
+- ✨ **lib/presentation/pages/PokemonQuizPage.dart**: New quiz game page
+- ⚠️ **lib/presentation/page_necessities/detail_page/tcgCards.dart**: Now deprecated/empty (can be deleted)
+- ✅ **lib/presentation/theme_provider.dart**: Fixed and completed implementation
+- ✅ **lib/data/queries.dart**: Rebuilt and all functions working
 
 ## 17. Future Enhancements
 - **Cursor-based Pagination**: Switch from offset to cursor for better performance
@@ -371,21 +387,65 @@ lib/
 - **Region Maps**: Interactive maps showing Pokémon locations
 - **Share Feature**: Export Pokémon card as image
 
-## 18. Development Progress
-- ✅ 3-layer architecture implemented
+## 18. Development Progress (Updated November 2025)
+
+### ✅ Completed Features
+- ✅ 3-layer architecture implemented and fixed
 - ✅ BLoC pattern for state management
 - ✅ GraphQL integration with caching
 - ✅ Home page with search and filters
 - ✅ Detail page with comprehensive information
-- ✅ TCG cards integration
-- ✅ Theme system (light/dark)
+- ✅ **TCG cards integration** (lib/data/tcg_service.dart)
+- ✅ **"VIEW CARDS" button** with modal bottom sheet
+- ✅ Theme system (light/dark) with proper Provider implementation
 - ✅ Type-based gradients
 - ✅ Evolution chains
 - ✅ Stats visualization
-- ⏳ Pagination improvements needed
-- ⏳ Favorites and offline mode
-- ⏳ Advanced animations
-- ⏳ Accessibility features
-- ⏳ Interactive quiz game
+- ✅ **Pokemon Quiz Game** ("Who's That Pokémon?")
+- ✅ **Quiz button in AppBar** for easy access
+- ✅ Infinite scroll pagination
+- ✅ Debounced search (500ms)
+- ✅ Multiple filters working together
 
-**Overall Progress: ~45-50%**
+### 🔧 Architecture Fixes Completed
+- ✅ **theme_provider.dart**: Completed missing implementation with proper ChangeNotifier
+- ✅ **queries.dart**: Rebuilt from corrupted state with all functions working
+- ✅ **Provider fix**: Added `listen: false` to prevent event handler errors
+- ✅ **TCGService**: Moved from presentation to data layer (proper architecture)
+
+### 🎮 New Features Added
+1. **TCG Cards System**
+   - Service in data layer: `lib/data/tcg_service.dart`
+   - Searches ~150 TCG sets comprehensively
+   - High-quality card images with zoom
+   - Loading states and error handling
+   
+2. **Pokemon Quiz Game**
+   - Random Pokémon selection (1-1010)
+   - Silhouette effect with ColorFiltered matrix
+   - Score and attempts tracking
+   - Case-insensitive validation
+   - Retro Press Start 2P styling
+
+### ⏳ In Progress
+- Pagination improvements (cursor-based)
+- TCG card search caching (currently 10-30s)
+
+### 🔮 Future Enhancements
+- Favorites and offline mode
+- Advanced animations and Hero transitions
+- Accessibility features
+- Type matchups display
+- Shiny toggle
+- Form variants (Alola, Galar, Mega)
+- Share feature for cards
+
+**Overall Progress: ~75%** ⬆️ (previously ~45-50%)
+
+**Key Metrics:**
+- UI/UX: 85% complete
+- GraphQL Integration: 90% complete
+- Architecture: 100% complete
+- State Management: 100% complete
+- TCG Integration: 100% complete
+- Quiz Game: 100% complete

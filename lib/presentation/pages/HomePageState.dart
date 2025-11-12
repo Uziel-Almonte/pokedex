@@ -15,6 +15,7 @@ import 'package:pokedex/data/queries.dart';
 import '/domain/state_management/bloc_state_home.dart';
 
 import '/presentation/page_necessities/home_page/showFilterDialog.dart' as show_filter_dialog;
+import 'PokemonQuizPage.dart';
 
 
 
@@ -157,6 +158,19 @@ class HomePageState extends State<home_page.PokeHomePage> {
         ),
       ),
       actions: [
+        // Pokemon Quiz button
+        IconButton(
+          icon: const Icon(Icons.quiz, color: Colors.yellow),
+          tooltip: 'Pokemon Quiz',
+          onPressed: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const PokemonQuizPage(),
+              ),
+            );
+          },
+        ),
         Consumer<AppThemeState>(
           builder: (context, themeState, _) {
             return Row(

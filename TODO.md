@@ -12,25 +12,25 @@ O - completo
 1. Interfaz de Usuario (UI/UX) — 25 %
 Lista de Pokémon
 
-O - Mostrar nombre, imagen, tipo(s) y número (#dex). 
+O - Mostrar nombre, imagen, tipo(s) y número (#dex).
 
-O - Implementar barra de búsqueda con debounce (300–500 ms). 
+O - Implementar barra de búsqueda con debounce (300–500 ms).
 
-I - Diseño moderno, accesible y responsivo (Material 3). 
+I - Diseño moderno, accesible y responsivo (Material 3).
 
-O - Aplicar temas dinámicos (oscuro/claro). 
+O - Aplicar temas dinámicos (oscuro/claro).
 
 X - Pantalla de error con mensaje y botón "Reintentar".
 
 Pantalla de Detalles
 
-O - Mostrar nombre, número, tipos, sprite/official-artwork. 
+O - Mostrar nombre, número, tipos, sprite/official-artwork.
 
-O - Si hay 2 tipos, mostrar ambos; si falta imagen oficial, usar sprite. 
+O - Si hay 2 tipos, mostrar ambos; si falta imagen oficial, usar sprite.
 
-O - Mostrar estadísticas base (HP, Atk, Def, SpA, SpD, Spe) y total. 
+O - Mostrar estadísticas base (HP, Atk, Def, SpA, SpD, Spe) y total.
 
-O - Visualizar stats con barras de progreso con colores por tipo de stat. 
+O - Visualizar stats con barras de progreso con colores por tipo de stat.
 
 O - Mostrar habilidades: nombre, si es oculta (isHidden == true) y efecto resumido.
 
@@ -116,7 +116,7 @@ X - Implementar soporte multilenguaje (español/inglés, mínimo en trivia).
 
 10. Sección Interactiva: "¿Quién es este Pokémon?" — 10 %
 
-X - Mostrar silueta del Pokémon y pedir nombre.
+O - Mostrar silueta del Pokémon y pedir nombre.
 
 X - Sistema de puntuación y tiempo límite.
 
@@ -130,7 +130,7 @@ X - Desbloquear logros visuales al alcanzar puntajes altos.
 - **Tarjetas TCG**: Integración con TCGDex API para mostrar cartas de colección reales
 - **Gradientes por Tipo**: Cada Pokémon muestra gradientes visuales basados en su(s) tipo(s)
 - **Pie Charts**: Visualización de gender ratio con gráficos circulares
-- **Tarjetas de Información**: 
+- **Tarjetas de Información**:
   - StatsCard (estadísticas base con barras de progreso)
   - AbilitiesCard (habilidades normales y ocultas)
   - MovesCard (movimientos agrupados por nivel)
@@ -140,3 +140,6 @@ X - Desbloquear logros visuales al alcanzar puntajes altos.
 - **Diseño Retro**: Fuente Press Start 2P (estilo 8-bit) en títulos y encabezados
 
 ## Progreso General Estimado: ~45-50%
+
+
+
