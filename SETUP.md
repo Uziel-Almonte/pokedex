@@ -13,6 +13,9 @@ This document details the setup and implementation steps for the Pokedex app, in
   - `graphql_flutter: ^5.0.1` for GraphQL API integration
   - `http: ^1.1.0` for HTTP requests (TCG card fetching)
   - `google_fonts: ^6.3.2` for custom Google Fonts styling (Press Start 2P retro font)
+  - `pie_chart: ^5.4.0` for pie chart visualization (gender ratios)
+  - `flutter_bloc: ^9.1.1` for BLoC state management pattern
+  - `equatable: ^2.0.0` for value equality in BLoC events/states
   - `cupertino_icons: ^1.0.8` for iOS-style icons
   - `flutter_lints: ^5.0.0` for recommended linting rules
   - `provider: ^6.1.5+1` for state management (theme switching)
@@ -366,12 +369,73 @@ This document details the setup and implementation steps for the Pokedex app, in
   - Fallback UI for missing images
 
 ## 17. Development Notes
-- **State Management**: Uses Provider for theme state, local state for UI updates and filters
+- **Architecture**: Clean 3-layer architecture (data, domain, presentation)
+- **State Management**: BLoC pattern for business logic, Provider for theme state
 - **Performance**: Debounced search prevents excessive API calls
 - **Responsiveness**: UI updates smoothly with async operations
 - **Accessibility**: Theme support for user preferences
-- **Scalability**: Service classes separate concerns (data fetching vs UI)
+- **Scalability**: Service classes and BLoC separate concerns (data fetching vs business logic vs UI)
 - **Visual Design**: Type-based gradients provide intuitive visual feedback
+
+## 17a. BLoC State Management Pattern
+The app implements the BLoC (Business Logic Component) pattern using `flutter_bloc` package:
+
+### Home Page BLoC (`bloc_state_home.dart`)
+- **Events**:
+  - `LoadPokemonList`: Load Pokémon with filters (type, generation, ability, sort order)
+  - `LoadMorePokemon`: Pagination - load next page
+  - `SearchPokemon`: Search Pokémon by name with debounce
+  - `UpdateFilters`: Update active filters
+
+- **States**:
+  - `HomeLoading`: Initial loading state
+  - `HomeLoaded`: Successfully loaded Pokémon list
+  - `HomeError`: Error occurred during data fetch
+
+- **Benefits**:
+  - Separates UI from business logic
+  - Testable - events and states are easily unit tested
+  - Predictable state transitions
+  - Better code organization and maintainability
+
+### Detail Page BLoC (`bloc_state_main.dart`)
+- Manages Pokémon detail page state
+- Handles fetching individual Pokémon data
+- Coordinates multiple data sources (base info, stats, abilities, evolutions, moves)
+
+## 17b. Detail Page Components
+The detail page is modularized into reusable card components:
+
+### AbilitiesCard Component
+- Displays all Pokémon abilities
+- Highlights hidden abilities with orange badge
+- Shows ability effects (truncated to ≤160 characters)
+- Color-coded: blue for normal, orange for hidden
+
+### EvolutionChainCard Component
+- Fetches and displays complete evolution chain
+- Shows evolution triggers (level, stone, trade, etc.)
+- Handles branching evolutions
+- Displays "Does not evolve" message for non-evolving Pokémon
+- Clickable evolution sprites navigate to that Pokémon
+
+### MovesCard Component
+- Groups moves by level learned
+- Expandable sections for each level
+- Shows move type, power, accuracy, and PP
+- Currently displays level-up moves (TM/Tutor/Egg filtering in progress)
+
+### StatsCard Component
+- Displays all 6 base stats with color-coded bars
+- Visual representation: bars scale from 0-255 (max stat)
+- Shows total base stats
+- Color scheme: HP (red), ATK (orange), DEF (yellow), SpA (blue), SpD (green), SPE (pink)
+
+### PhysicalStatsCard Component
+- Shows height and weight with metric units
+- Displays egg groups for breeding information
+- Includes gender ratio pie chart using `pie_chart` package
+- Clean card design matching app theme
 
 ## 18. Future Enhancements
 - **Caching**: Store TCG card search results to avoid repeated API calls
@@ -390,14 +454,35 @@ This document details the setup and implementation steps for the Pokedex app, in
 ## 19. File Structure
 ```
 lib/
-├── main.dart                    # Main app entry, detail page UI
-├── home.dart                    # Home page with list, search, filters
-├── graphql.dart                 # GraphQL service singleton
-├── tcgCards.dart                # TCG API service for trading cards
-├── app_theme.dart               # Light/dark theme definitions
-├── theme_provider.dart          # Theme state management
-└── reusable_widgets/
-    └── PokeSelect.dart          # Reusable Pokémon card widget with gradients
+├── data/
+│   ├── graphql.dart              # GraphQL service singleton
+│   └── queries.dart              # GraphQL query definitions
+├── domain/
+│   ├── home.dart                 # Home page domain/entry point
+│   ├── main.dart                 # Main app entry/detail page domain
+│   ├── models/
+│   │   └── Pokemon.dart          # Pokemon model
+│   └── state_management/
+│       ├── bloc_state_home.dart  # BLoC for home page (events, states, logic)
+│       └── bloc_state_main.dart  # BLoC for main/detail page
+└── presentation/
+    ├── app_theme.dart            # Light/dark theme definitions
+    ├── theme_provider.dart       # Theme state management
+    ├── page_necessities/
+    │   ├── detail_page/
+    │   │   ├── AbilitiesCard.dart        # Abilities display with hidden indicator
+    │   │   ├── EvolutionChainCard.dart   # Evolution chain with triggers
+    │   │   ├── MovesCard.dart            # Moves by level display
+    │   │   ├── PhysicalStatsCard.dart    # Height, weight, egg groups
+    │   │   ├── StatsCard.dart            # Base stats with color bars
+    │   │   ├── showPokemonCards.dart     # TCG cards modal
+    │   │   └── tcgCards.dart             # TCG API service
+    │   └── home_page/
+    │       ├── PokeSelect.dart           # Pokémon card widget with gradients
+    │       └── showFilterDialog.dart     # Filter dialog (type, gen, ability)
+    └── pages/
+        ├── HomePageState.dart    # Home page UI state and logic
+        └── DetailPageState.dart  # Detail page UI state and logic
 ```
 
 ## 20. Running the App
