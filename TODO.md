@@ -12,7 +12,7 @@ O - completo
 1. Interfaz de Usuario (UI/UX) — 25 %
 Lista de Pokémon
 
-I - Mostrar nombre, imagen, tipo(s) y número (#dex). 
+O - Mostrar nombre, imagen, tipo(s) y número (#dex). 
 
 O - Implementar barra de búsqueda con debounce (300–500 ms).
 
