@@ -5,16 +5,10 @@ import 'dart:async';
 import 'package:graphql_flutter/graphql_flutter.dart';
 // Import the GraphQLService singleton
 import '../../domain/main.dart';
-import '/presentation/app_theme.dart';
-import '/data/graphql.dart';
 //fonts de google
 import 'package:google_fonts/google_fonts.dart';
 import '/presentation/theme_provider.dart';
 import 'package:provider/provider.dart';
-import 'package:pie_chart/pie_chart.dart';
-
-// Import the TCG service for Pokémon trading cards
-import '../page_necessities/detail_page/tcgCards.dart';
 
 import 'package:pokedex/data/queries.dart';
 import '../page_necessities/detail_page/showPokemonCards.dart' as show_pokemon_cards;
@@ -27,26 +21,6 @@ import '../page_necessities/detail_page/StatsCard.dart' as stats_card;
 import '../page_necessities/detail_page/PhysicalStatsCard.dart' as physical_stats_card;
 
 
-
-
-Map<String, double> _buildGenderMap(int? genderRate) {
-  if (genderRate == null || genderRate == -1) {
-    // Genderless or unknown
-    return {"Genderless": 1.0};
-  } else if (genderRate == 0) {
-    // All male
-    return {"Male": 1.0};
-  } else if (genderRate == 8) {
-    // All female
-    return {"Female": 1.0};
-  } else {
-    // Mixed gender ratio
-    return {
-      "Male": (8 - genderRate) / 8.0,
-      "Female": genderRate / 8.0,
-    };
-  }
-}
 
 // State class for MyHomePage
 class DetailPageState extends State<PokeDetailPage> {
@@ -189,57 +163,6 @@ class DetailPageState extends State<PokeDetailPage> {
           // SEARCH BAR SECTION
           // This TextField allows users to search for Pokémon by name
           // Features: debounce, clear button, themed styling, rounded borders
-          Padding(
-            padding: const EdgeInsets.all(16.0), // Add spacing around the search bar
-            child: TextField(
-              controller: _searchController, // Connect the text controller
-              onChanged: _onSearchChanged, // Trigger debounce on every text change
-              decoration: InputDecoration(
-                // Placeholder text shown when the field is empty
-                hintText: 'Search Pokémon...',
-                hintStyle: GoogleFonts.roboto(color: Colors.grey[600]),
-
-                // Search icon on the left side of the input field
-                prefixIcon: const Icon(Icons.search, color: Colors.red),
-
-                // Clear button (X icon) appears only when there's text
-                // Dynamically shows/hides based on text presence
-                suffixIcon: _searchController.text.isNotEmpty
-                    ? IconButton(
-                  icon: const Icon(Icons.clear, color: Colors.red),
-                  onPressed: () {
-                    _searchController.clear(); // Clear the text field
-                    setState(() {
-                      _searchQuery = ''; // Reset search query to show ID-based navigation
-                    });
-                  },
-                )
-                    : null, // No icon when field is empty
-
-                // Background styling for the search field
-                filled: true, // Enable background fill
-                fillColor: isDarkMode ? Colors.grey[800] : Colors.white, // White background
-
-                // Default border (no visible border, just rounded corners)
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30), // Rounded pill shape
-                  borderSide: BorderSide.none, // No border line
-                ),
-
-                // Border when the field is enabled but not focused
-                enabledBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: const BorderSide(color: Colors.red, width: 2), // Red border
-                ),
-
-                // Border when the field is focused (user is typing)
-                focusedBorder: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(30),
-                  borderSide: const BorderSide(color: Colors.blue, width: 2), // Blue border
-                ),
-              ),
-            ),
-          ),
 
           // POKÉMON DISPLAY AREA
           // This section shows the Pokémon information below the search bar
@@ -413,116 +336,6 @@ class DetailPageState extends State<PokeDetailPage> {
         ],
       ),
     );
-  }
-
-  // HELPER METHOD: Build a stat row widget
-  // This reusable method creates a single row displaying a Pokémon stat
-  //
-  // PARAMETERS:
-  // - statName: The display name of the stat (e.g., "HP", "ATK", "DEF")
-  // - statValue: The numeric value of the stat (0-255 typically)
-  // - color: The color for the progress bar (visual coding by stat type)
-  //
-  // LAYOUT: [Stat Name] [Numeric Value] [Colored Progress Bar]
-  // Example: HP          45           [████████░░░░░░░░░░]
-  //
-  // RETURNS: A Row widget containing the stat display
-  Widget _buildStatRow(String statName, int statValue, Color color) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween, // Distribute space evenly
-      children: [
-        // STAT NAME LABEL
-        // Displays the abbreviated stat name (HP, ATK, DEF, etc.)
-        Expanded(
-          child: Text(
-            statName, // The stat label passed as parameter
-            style: GoogleFonts.roboto(
-              fontSize: 16, // Readable size for stat names
-              color: isDarkMode ? Colors.white : Colors.black, // Black for high contrast
-              fontWeight: FontWeight.w500, // Medium weight (not too bold, not too light)
-            ),
-          ),
-        ),
-        const SizedBox(width: 10), // Spacing between name and value
-
-        // STAT VALUE NUMBER
-        // Displays the numeric stat value (e.g., 45, 120, 255)
-        Text(
-          statValue.toString(), // Convert integer to string for display
-          style: GoogleFonts.roboto(
-            fontSize: 16, // Same size as name for consistency
-            color: isDarkMode ? Colors.white : Colors.black, // Black for readability
-            fontWeight: FontWeight.bold, // Bold to emphasize the number
-          ),
-        ),
-        const SizedBox(width: 10), // Spacing between value and progress bar
-
-        // VISUAL PROGRESS BAR
-        // Shows the stat value as a colored bar (like in Pokémon games)
-        // Higher values = longer bar, easier to compare stats visually
-        Container(
-          height: 8, // Thin horizontal bar (8px height)
-          width: 100, // Fixed width (100px) - all bars same length for comparison
-          decoration: BoxDecoration(
-            color: Colors.grey[300], // Light grey background (unfilled portion)
-            borderRadius: BorderRadius.circular(4), // Rounded corners (4px radius)
-          ),
-
-          // FRACTIONALLY SIZED BOX - Creates the filled portion
-          // This widget fills a fraction of the parent container based on widthFactor
-          child: FractionallySizedBox(
-            alignment: Alignment.centerLeft, // Align filled part to the left side
-
-            // CALCULATE FILL PERCENTAGE
-            // widthFactor: 0.0 to 1.0 (0% to 100%)
-            // Formula: statValue / 255
-            // Why 255? It's the maximum value for any Pokémon stat
-            // Examples:
-            //   - HP 45 / 255 = 0.176 (17.6% filled)
-            //   - Attack 120 / 255 = 0.470 (47% filled)
-            //   - Speed 255 / 255 = 1.0 (100% filled - rare!)
-            widthFactor: statValue / 255, // Dynamic width based on stat value
-
-            // COLORED FILL CONTAINER
-            // This is the actual colored bar that represents the stat value
-            child: Container(
-              decoration: BoxDecoration(
-                color: color, // Dynamic color based on stat type (passed as parameter)
-                // Color meanings: Red=HP, Orange=ATK, Yellow=DEF, Blue=SpA, Green=SpD, Pink=SPE
-                borderRadius: BorderRadius.circular(4), // Match parent corners
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-  }
-
-
-
-// Helper method to get type colors (reuse from PokeSelect)
-  Color _getTypeColor(String? typeName) {
-    const typeColors = {
-      'normal': Color(0xFFA8A878),
-      'fire': Color(0xFFF08030),
-      'water': Color(0xFF6890F0),
-      'electric': Color(0xFFF8D030),
-      'grass': Color(0xFF78C850),
-      'ice': Color(0xFF98D8D8),
-      'fighting': Color(0xFFC03028),
-      'poison': Color(0xFFA040A0),
-      'ground': Color(0xFFE0C068),
-      'flying': Color(0xFFA890F0),
-      'psychic': Color(0xFFF85888),
-      'bug': Color(0xFFA8B820),
-      'rock': Color(0xFFB8A038),
-      'ghost': Color(0xFF705898),
-      'dragon': Color(0xFF7038F8),
-      'dark': Color(0xFF705848),
-      'steel': Color(0xFFB8B8D0),
-      'fairy': Color(0xFFEE99AC),
-    };
-    return typeColors[typeName?.toLowerCase()] ?? Colors.grey;
   }
 
 }

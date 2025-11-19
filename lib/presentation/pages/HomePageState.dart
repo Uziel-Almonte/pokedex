@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
 import 'dart:async';
-// Import GraphQL Flutter package for GraphQL client and widgets
-import 'package:graphql_flutter/graphql_flutter.dart';
 //fonts de google
 import 'package:google_fonts/google_fonts.dart';
 
@@ -11,7 +9,6 @@ import 'package:provider/provider.dart';
 import '../page_necessities/home_page/PokeSelect.dart';
 import '/domain/main.dart' as main_page;
 import '/domain/home.dart' as home_page;
-import 'package:pokedex/data/queries.dart';
 import '/domain/state_management/bloc_state_home.dart';
 
 import '/presentation/page_necessities/home_page/showFilterDialog.dart' as show_filter_dialog;
@@ -50,12 +47,6 @@ class HomePageState extends State<home_page.PokeHomePage> {
   // ============================================================================
   // Estas variables almacenan los criterios de filtrado seleccionados por el usuario.
   // Se inicializan como null, lo que significa "sin filtro aplicado".
-  //
-  // Cuando el usuario selecciona un filtro en el diálogo, estas variables se actualizan
-  // y se usa setState() para reconstruir la interfaz con los resultados filtrados.
-  String? _selectedType; // Tipo de Pokémon seleccionado (fire, water, grass, etc.)
-  int? _selectedGeneration; // Generación seleccionada (1-9)
-  String? _selectedAbility; // Nombre de habilidad para buscar (ej: "overgrow")
 
   // Add initState to listen to controller changes so the suffix icon updates immediately
   @override
@@ -124,8 +115,6 @@ class HomePageState extends State<home_page.PokeHomePage> {
 
   @override
   Widget build(BuildContext context) {
-    final client = GraphQLProvider.of(context).value;
-
     return Scaffold(
       appBar: _buildAppBar(context),
       body: Column(

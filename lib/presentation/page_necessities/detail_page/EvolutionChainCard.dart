@@ -22,6 +22,25 @@ class EvolutionChainCard extends StatefulWidget {
   State<EvolutionChainCard> createState() => _EvolutionChainCardState();
 }
 
+// Data class representing a single Pokémon in the evolution chain
+class EvolutionNode {
+  final int speciesId;       // Species ID (used for evolution tree logic)
+  final int pokemonId;       // Pokémon ID (used for images and navigation)
+  final String name;         // Pokémon name
+  final int? evolvesFromId;  // Parent species ID (null for base form)
+  final int? minLevel;       // Level required to evolve (if applicable)
+  final String? itemName;    // Item required to evolve (if applicable)
+
+  EvolutionNode({
+    required this.speciesId,
+    required this.pokemonId,
+    required this.name,
+    this.evolvesFromId,
+    this.minLevel,
+    this.itemName,
+  });
+}
+
 class _EvolutionChainCardState extends State<EvolutionChainCard> {
   @override
   Widget build(BuildContext context) {
@@ -232,7 +251,7 @@ class _EvolutionChainCardState extends State<EvolutionChainCard> {
           context,
           MaterialPageRoute(
             builder: (context) => PokeDetailPage(
-              title: 'Pokédex',
+              title: 'Pokedex',
               initialPokemonId: node.pokemonId,
             ),
           ),
@@ -325,21 +344,3 @@ class _EvolutionChainCardState extends State<EvolutionChainCard> {
   }
 }
 
-// Data class representing a single Pokémon in the evolution chain
-class EvolutionNode {
-  final int speciesId;       // Species ID (used for evolution tree logic)
-  final int pokemonId;       // Pokémon ID (used for images and navigation)
-  final String name;         // Pokémon name
-  final int? evolvesFromId;  // Parent species ID (null for base form)
-  final int? minLevel;       // Level required to evolve (if applicable)
-  final String? itemName;    // Item required to evolve (if applicable)
-
-  EvolutionNode({
-    required this.speciesId,
-    required this.pokemonId,
-    required this.name,
-    this.evolvesFromId,
-    this.minLevel,
-    this.itemName,
-  });
-}

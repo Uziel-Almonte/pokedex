@@ -201,8 +201,12 @@ Future<Map<String, dynamic>?> fetchEvolutionChain(int speciesId, GraphQLClient c
     }
   ''';
 
+  // Executes the query
   final result = await client.query(QueryOptions(document: gql(query)));
+
+  // returns the map of data for the pokemon
   final species = result.data?['pokemon_v2_pokemonspecies'];
+  // returns the first element in the list (the map itself)
   return (species != null && species.isNotEmpty) ? species[0] : null;
 }
 

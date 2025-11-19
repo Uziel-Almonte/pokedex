@@ -1,6 +1,5 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
-import '/domain/models/Pokemon.dart';
 import '/data/queries.dart';
 
 // Events
@@ -132,7 +131,12 @@ class HomeError extends HomeState {
   List<Object?> get props => [message];
 }
 
-// BLoC
+
+
+
+/// HomeBloc
+/// Handles loading, pagination, searching and filter updates for the Home page.
+/// Accepts a GraphQL client through the constructor to keep networking out of widgets.
 class HomeBloc extends Bloc<HomeEvent, HomeState> {
   final dynamic client;
   static const int _pageSize = 50;
@@ -144,6 +148,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     on<UpdateFilters>(_onUpdateFilters);
   }
 
+  /// Handler for initial load or reload with filters.
+  /// Emits HomeLoading, fetches the first page via fetchPokemonList, then emits HomeLoaded.
   Future<void> _onLoadPokemonList(
       LoadPokemonList event,
       Emitter<HomeState> emit,
@@ -173,7 +179,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
-
+  /// Handler to load the next page when user scrolls near bottom.
+  /// Calculates next page from current list length, fetches, appends and emits updated state.
   Future<void> _onLoadMorePokemon(
       LoadMorePokemon event,
       Emitter<HomeState> emit,
@@ -208,61 +215,10 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
   }
 
 
-  Future<List<Map<String, dynamic>>> _fetchPokemonRange(
-      int startId,
-      int count,
-      String? type,
-      int? generation,
-      String? ability,
-      ) async {
-    final List<Map<String, dynamic>> results = [];
-    int currentId = startId;
-    int attempts = 0;
-    final maxAttempts = count * 3; // Allow more attempts when filtering
 
-    while (results.length < count && attempts < maxAttempts) {
-      final pokemonData = await fetchPokemon(currentId, client);
-      if (pokemonData != null) {
-        if (_matchesFilters(pokemonData, type, generation, ability)) {
-          results.add(pokemonData);
-        }
-      }
-      currentId++;
-      attempts++;
-    }
-
-    return results;
-  }
-
-
-  bool _matchesFilters(
-      Map<String, dynamic> pokemon,
-      String? type,
-      int? generation,
-      String? ability,
-      ) {
-    // Implement filter logic here
-    if (type != null) {
-      final types = (pokemon['pokemontypes'] as List?)
-          ?.map((t) => t['type']?['name'])
-          .toList();
-      if (types?.contains(type) != true) return false;
-    }
-
-    if (generation != null) {
-      if (pokemon['generation']?['id'] != generation) return false;
-    }
-
-    if (ability != null) {
-      final abilities = (pokemon['pokemonabilities'] as List?)
-          ?.map((a) => a['ability']?['name'])
-          .toList();
-      if (abilities?.contains(ability) != true) return false;
-    }
-
-    return true;
-  }
-
+  /// Handler for search event.
+  /// If query is empty, triggers LoadPokemonList to restore the list.
+  /// Otherwise searches by name and emits a HomeLoaded with terminal results.
   Future<void> _onSearchPokemon(
       SearchPokemon event,
       Emitter<HomeState> emit,
@@ -294,6 +250,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     }
   }
 
+  /// Handler to update filters: transforms into a LoadPokemonList event.
   void _onUpdateFilters(
       UpdateFilters event,
       Emitter<HomeState> emit,
