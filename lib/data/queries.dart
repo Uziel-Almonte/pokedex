@@ -9,6 +9,16 @@ import 'package:graphql_flutter/graphql_flutter.dart';
 
 /**
  * FETCH POKEMON - Get complete details for a single Pokémon by ID
+ *
+ * This function fetches comprehensive data for a single Pokémon including:
+ * - Basic info (id, name, height, weight)
+ * - Types (fire, water, grass, etc.)
+ * - Base stats (HP, Attack, Defense, Sp. Attack, Sp. Defense, Speed)
+ * - Abilities (normal and hidden)
+ * - Moves (level-up, TM, egg moves, etc.)
+ * - Species data (gender rate, egg groups, generation)
+ * - ✨ NEW: Pokédex entry (flavor text description)
+ * - ✨ NEW: Region and generation information
  */
 Future<Map<String, dynamic>?> fetchPokemon(int id, GraphQLClient client) async {
   final query = '''
@@ -53,6 +63,41 @@ Future<Map<String, dynamic>?> fetchPokemon(int id, GraphQLClient client) async {
           generation_id
           pokemon_v2_pokemonegggroups {
             pokemon_v2_egggroup {
+              name
+            }
+          }
+          # ✨ NEW: Fetch generation and region data
+          # This nested query navigates through the species relationship to get:
+          # 1. Generation name (e.g., "generation-i", "generation-iv")
+          # 2. Region name (e.g., "kanto", "johto", "hoenn")
+          # The generation table links to the region table, showing where Pokémon originated
+          pokemon_v2_generation {
+            name
+            pokemon_v2_region {
+              name
+            }
+          }
+          # ✨ NEW: Fetch Pokédex entries (flavor text)
+          # FILTER EXPLANATION:
+          # - language_id: {_eq: 9} → Gets English text only (9 = English)
+          # - limit: 1 → Gets only one entry (most recent)
+          # - order_by: {version_id: desc} → Sorts by game version, newest first
+          #
+          # WHY WE FILTER:
+          # - Each Pokémon has ~50+ flavor texts across all games and languages
+          # - We only want one English description for the detail page
+          # - We prefer the most recent game's description
+          #
+          # EXAMPLE DATA RETURNED:
+          # {
+          #   flavor_text: "A strange seed was planted on its back at birth...",
+          #   pokemon_v2_version: {
+          #     name: "scarlet"
+          #   }
+          # }
+          pokemon_v2_pokemonspeciesflavortexts(where: {language_id: {_eq: 9}}, limit: 1, order_by: {version_id: desc}) {
+            flavor_text
+            pokemon_v2_version {
               name
             }
           }
@@ -209,4 +254,3 @@ Future<Map<String, dynamic>?> fetchEvolutionChain(int speciesId, GraphQLClient c
   // returns the first element in the list (the map itself)
   return (species != null && species.isNotEmpty) ? species[0] : null;
 }
-

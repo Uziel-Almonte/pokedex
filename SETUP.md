@@ -130,6 +130,17 @@ Contains all UI components, pages, and styling.
       - Displays total stats
       - Retro Press Start 2P font styling
 
+    - **PokedexEntryCard.dart**: ✨ NEW: Pokédex entry and region information
+      - Displays official Pokédex flavor text (game description)
+      - Shows region of origin (Kanto, Johto, Hoenn, Sinnoh, etc.)
+      - Shows generation introduced (Generation I-IX)
+      - Formats region names (capitalize first letter)
+      - Formats generation names ("generation-i" → "Generation I")
+      - Blue color scheme for region (globe icon)
+      - Purple color scheme for generation (history icon)
+      - Gracefully handles missing data with placeholder text
+      - Full dark/light mode support
+
     - **AbilitiesCard.dart**: Abilities display
       - Lists all abilities (normal and hidden)
       - Highlights hidden abilities with orange background
@@ -349,6 +360,7 @@ lib/
 │       │   └── showFilterDialog.dart    # Filter dialog
 │       └── detail_page/
 │           ├── StatsCard.dart           # Base stats card
+│           ├── PokedexEntryCard.dart      # Pokédex entry and region information
 │           ├── AbilitiesCard.dart       # Abilities card
 │           ├── MovesCard.dart           # Moves card
 │           ├── EvolutionChainCard.dart  # Evolution chain card
@@ -403,6 +415,7 @@ lib/
 - ✅ Stats visualization
 - ✅ **Pokemon Quiz Game** ("Who's That Pokémon?")
 - ✅ **Quiz button in AppBar** for easy access
+- ✅ **Pokédex Entry Card** with flavor text, region, and generation
 - ✅ Infinite scroll pagination
 - ✅ Debounced search (500ms)
 - ✅ Multiple filters working together
@@ -427,25 +440,15 @@ lib/
    - Case-insensitive validation
    - Retro Press Start 2P styling
 
-### ⏳ In Progress
-- Pagination improvements (cursor-based)
-- TCG card search caching (currently 10-30s)
-
-### 🔮 Future Enhancements
-- Favorites and offline mode
-- Advanced animations and Hero transitions
-- Accessibility features
-- Type matchups display
-- Shiny toggle
-- Form variants (Alola, Galar, Mega)
-- Share feature for cards
-
-**Overall Progress: ~75%** ⬆️ (previously ~45-50%)
-
-**Key Metrics:**
-- UI/UX: 85% complete
-- GraphQL Integration: 90% complete
-- Architecture: 100% complete
-- State Management: 100% complete
-- TCG Integration: 100% complete
-- Quiz Game: 100% complete
+3. **Pokédex Entry and Region Information** ✨ NEW
+   - Displays official Pokédex flavor text from games
+   - Shows region of origin (Kanto, Johto, Hoenn, etc.)
+   - Shows generation introduced (Gen I-IX with Roman numerals)
+   - Text cleaning (removes \n, \f, normalizes whitespace)
+   - GraphQL query filters for English only (language_id: 9)
+   - Fetches most recent game version's entry
+   - Beautiful card layout with book icon
+   - Blue region card with globe icon
+   - Purple generation card with history icon
+   - Full dark/light mode theming
+   - Graceful handling of missing data

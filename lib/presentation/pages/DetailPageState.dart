@@ -19,6 +19,7 @@ import '../page_necessities/detail_page/MovesCard.dart' as moves_card;
 import '../page_necessities/detail_page/EvolutionChainCard.dart' as evolutions_card;
 import '../page_necessities/detail_page/StatsCard.dart' as stats_card;
 import '../page_necessities/detail_page/PhysicalStatsCard.dart' as physical_stats_card;
+import '../page_necessities/detail_page/PokedexEntryCard.dart' as pokedex_entry_card;
 
 
 
@@ -261,6 +262,16 @@ class DetailPageState extends State<PokeDetailPage> {
                             color: Colors.green[700], // Use medium-dark green (shade 700) for nature/type theme
                             fontWeight: FontWeight.w600, // Use semi-bold weight (600) for moderate emphasis
                           ),
+                        ),
+
+                        // POKÉDEX ENTRY AND REGION
+                        // This section displays the Pokédex entry description and region information
+                        const SizedBox(height: 20),
+                        pokedex_entry_card.PokedexEntryCard(
+                          pokedexEntry: pokemon.pokedexEntry,
+                          region: pokemon.region,
+                          generation: pokemon.generation,
+                          isDarkMode: isDarkMode,
                         ),
 
                         // BASE STATS SECTION
