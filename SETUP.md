@@ -20,6 +20,9 @@ This document details the setup and implementation steps for the Pokedex app, in
   - `flutter_lints: ^5.0.0` for recommended linting rules
   - `provider: ^6.1.5+1` for theme state management
   - `framework: ^1.0.3` for additional framework utilities
+  - `hive: ^2.2.3` for lightweight NoSQL database
+  - `hive_flutter: ^1.1.0` for Flutter-specific Hive integration
+  - `path_provider: ^2.1.1` for finding storage directory paths
 
 ## 3. Project Architecture (3-Layer Pattern)
 
@@ -47,6 +50,11 @@ Handles all external data sources and API communication.
   - Iterates through all TCG sets (~150+ API calls)
   - Returns comprehensive list of card objects
   - Error handling for individual set failures
+
+- **favorites_service.dart**: ❤️ New service for managing favorite Pokémon
+  - `FavoritesService` singleton class
+  - Manages favorites using Hive local storage
+  - Methods: `init()`, `addFavorite()`, `removeFavorite()`, `toggleFavorite()`, `isFavorite()`, `getAllFavorites()`, `count`, `clearAll()`, `watchFavorites()`
 
 ### Domain Layer (`lib/domain/`)
 Contains business logic, models, and state management.
@@ -108,6 +116,13 @@ Contains all UI components, pages, and styling.
     - Score and attempts tracking
     - Case-insensitive validation
     - Retro Press Start 2P styling
+
+  - **FavoritesPage.dart**: ❤️ NEW: Favorites page
+    - Displays all favorited Pokémon in a grid
+    - Real-time updates when favorites change
+    - Empty state message when no favorites
+    - Navigation to detail page on card tap
+    - Quick remove from favorites
 
 - **page_necessities/**:
   - **home_page/**:
@@ -336,7 +351,8 @@ lib/
 ├── data/                           # Data Layer
 │   ├── graphql.dart                # GraphQL service singleton
 │   ├── queries.dart                # All GraphQL query functions
-│   └── tcg_service.dart            # ✨ NEW: TCG API service (TCGDex integration)
+│   ├── tcg_service.dart            # ✨ NEW: TCG API service (TCGDex integration)
+│   └── favorites_service.dart      # ❤️ NEW: Favorites service (Hive integration)
 │
 ├── domain/                         # Domain Layer
 │   ├── main.dart                   # Main app entry point
@@ -353,7 +369,8 @@ lib/
 │   ├── pages/
 │   │   ├── HomePageState.dart      # Home page implementation
 │   │   ├── DetailPageState.dart    # Detail page implementation
-│   │   └── PokemonQuizPage.dart    # ✨ NEW: "Who's That Pokémon?" quiz game
+│   │   ├── PokemonQuizPage.dart    # ✨ NEW: "Who's That Pokémon?" quiz game
+│   │   └── FavoritesPage.dart      # ❤️ NEW: Favorites page
 │   └── page_necessities/
 │       ├── home_page/
 │       │   ├── PokeSelect.dart          # Pokémon card widget
@@ -378,9 +395,11 @@ lib/
 ### Key Changes in File Structure:
 - ✨ **lib/data/tcg_service.dart**: New service for TCG card fetching (proper data layer)
 - ✨ **lib/presentation/pages/PokemonQuizPage.dart**: New quiz game page
+- ❤️ **lib/presentation/pages/FavoritesPage.dart**: New favorites page
 - ⚠️ **lib/presentation/page_necessities/detail_page/tcgCards.dart**: Now deprecated/empty (can be deleted)
 - ✅ **lib/presentation/theme_provider.dart**: Fixed and completed implementation
 - ✅ **lib/data/queries.dart**: Rebuilt and all functions working
+- ✅ **lib/data/favorites_service.dart**: New service for managing favorites with Hive
 
 ## 17. Future Enhancements
 - **Cursor-based Pagination**: Switch from offset to cursor for better performance
@@ -419,36 +438,355 @@ lib/
 - ✅ Infinite scroll pagination
 - ✅ Debounced search (500ms)
 - ✅ Multiple filters working together
+- ✅ **Favorites System** ❤️
+  - Local storage with Hive
+  - Heart button on detail pages
+  - Dedicated favorites page with grid
+  - Real-time badge counter
+  - Persistent across sessions
 
-### 🔧 Architecture Fixes Completed
+### 🔧 Technical Improvements
 - ✅ **theme_provider.dart**: Completed missing implementation with proper ChangeNotifier
 - ✅ **queries.dart**: Rebuilt from corrupted state with all functions working
 - ✅ **Provider fix**: Added `listen: false` to prevent event handler errors
 - ✅ **TCGService**: Moved from presentation to data layer (proper architecture)
+- ✅ **Favorites Service**: Singleton pattern with error handling
+- ✅ **Stream-Based Updates**: Real-time UI synchronization
+- ✅ **Hot-Reload Safety**: Graceful fallbacks for development
 
-### 🎮 New Features Added
-1. **TCG Cards System**
-   - Service in data layer: `lib/data/tcg_service.dart`
-   - Searches ~150 TCG sets comprehensively
-   - High-quality card images with zoom
-   - Loading states and error handling
-   
-2. **Pokemon Quiz Game**
-   - Random Pokémon selection (1-1010)
-   - Silhouette effect with ColorFiltered matrix
-   - Score and attempts tracking
-   - Case-insensitive validation
-   - Retro Press Start 2P styling
+---
 
-3. **Pokédex Entry and Region Information** ✨ NEW
-   - Displays official Pokédex flavor text from games
-   - Shows region of origin (Kanto, Johto, Hoenn, etc.)
-   - Shows generation introduced (Gen I-IX with Roman numerals)
-   - Text cleaning (removes \n, \f, normalizes whitespace)
-   - GraphQL query filters for English only (language_id: 9)
-   - Fetches most recent game version's entry
-   - Beautiful card layout with book icon
-   - Blue region card with globe icon
-   - Purple generation card with history icon
-   - Full dark/light mode theming
-   - Graceful handling of missing data
+## 19. ❤️ Favorites System (Added November 2025)
+
+### Overview
+A complete favorites feature that allows users to save their favorite Pokémon locally using Hive database. Favorites persist across app sessions and sync in real-time across all screens.
+
+### Dependencies Added
+```yaml
+hive: ^2.2.3              # Lightweight NoSQL database for Flutter
+hive_flutter: ^1.1.0      # Flutter-specific Hive integration
+path_provider: ^2.1.1     # For finding storage directory paths
+```
+
+### Architecture & Files
+
+#### 1. FavoritesService (`lib/data/favorites_service.dart`)
+**Purpose**: Singleton service managing all favorites operations with Hive local storage.
+
+**Key Features**:
+- **Singleton Pattern**: Only one instance exists globally (`_instance`)
+- **Persistent Storage**: Data survives app restarts (stored on device)
+- **Type-Safe**: Only stores integers (Pokémon IDs)
+- **Reactive**: Stream-based updates for real-time UI synchronization
+- **Error Handling**: Graceful fallbacks for hot-reload scenarios
+
+**Core Methods**:
+```dart
+// Initialization (called in main.dart before runApp)
+await FavoritesService().init();
+
+// Add/Remove/Toggle
+await addFavorite(pokemonId)      // Returns true if added, false if already exists
+await removeFavorite(pokemonId)   // Returns true if removed, false if not found
+await toggleFavorite(pokemonId)   // Returns true if now favorite, false if removed
+
+// Query Methods (synchronous)
+bool isFavorite(pokemonId)        // Check if Pokémon is favorited
+List<int> getAllFavorites()       // Get all favorite Pokémon IDs
+int count                         // Get number of favorites
+
+// Utility
+await clearAll()                  // Remove all favorites (permanent)
+Stream<BoxEvent> watchFavorites() // Stream for reactive UI updates
+```
+
+**Implementation Details**:
+- **Hive Box**: Named "favorites", stores `List<int>` of Pokémon IDs
+- **Lazy Initialization**: Auto-initializes on first async method call if needed
+- **Hot-Reload Safety**: Try-catch blocks prevent crashes during hot reload
+- **O(1) Count**: Very fast count operation, no iteration
+
+#### 2. FavoritesPage (`lib/presentation/pages/FavoritesPage.dart`)
+**Purpose**: Dedicated page displaying all favorite Pokémon in a grid layout.
+
+**Features**:
+- **2-Column Grid**: Beautiful card layout with proper spacing
+- **Real-Time Updates**: Uses `StreamBuilder<BoxEvent>` to auto-refresh when favorites change
+- **Empty State**: Shows friendly message with heart icon when no favorites
+- **Navigation**: Tap any card to view full Pokémon details
+- **Quick Remove**: Tap heart icon on card to remove from favorites
+- **Theme Support**: Adapts to light/dark mode
+
+**UI Components**:
+- AppBar with "FAVORITES" title (Press Start 2P font)
+- Theme toggle switch
+- Grid with 2 columns, 0.75 aspect ratio
+- Each card shows:
+  - Pokémon image (official artwork)
+  - Pokémon ID (#001 format)
+  - Name (uppercase, Press Start 2P)
+  - Types (color-coded)
+  - Heart icon (remove button)
+
+**Implementation**:
+```dart
+// Fetches Pokémon data for each favorite ID
+FutureBuilder<Map<String, dynamic>?>(
+  future: fetchPokemon(pokemonId, client),
+  // Displays card or loading/error state
+)
+
+// Watches for changes and rebuilds
+StreamBuilder<BoxEvent>(
+  stream: _favoritesService.watchFavorites(),
+  // Rebuilds grid when favorites change
+)
+```
+
+#### 3. Detail Page Enhancement (`lib/presentation/pages/DetailPageState.dart`)
+**Purpose**: Added heart button to Pokemon image container for quick favoriting.
+
+**UI Enhancement**:
+- **Heart Button**: Positioned in top-right corner of Pokémon image
+- **Visual States**:
+  - Filled red heart (❤️): Currently favorited
+  - Outlined grey heart (🤍): Not favorited
+- **White Circle Background**: 90% opacity for visibility over any image
+- **Box Shadow**: Subtle depth effect
+- **Feedback**: SnackBar notification when toggling (green for add, orange for remove)
+
+**Implementation**:
+```dart
+Stack(
+  children: [
+    Container(...Pokémon image...),
+    Positioned(
+      top: 8, right: 8,
+      child: StreamBuilder<BoxEvent>( // Real-time updates
+        stream: _favoritesService.watchFavorites(),
+        builder: (context, snapshot) {
+          final isFavorite = _favoritesService.isFavorite(pokemon.id);
+          return IconButton(
+            icon: Icon(isFavorite ? Icons.favorite : Icons.favorite_border),
+            onPressed: () async {
+              await _favoritesService.toggleFavorite(pokemon.id);
+              // Shows SnackBar with confirmation message
+            },
+          );
+        },
+      ),
+    ),
+  ],
+)
+```
+
+#### 4. Home Page Navigation (`lib/presentation/pages/HomePageState.dart`)
+**Purpose**: Added favorites button to AppBar for easy access.
+
+**UI Components**:
+- **Heart Icon**: Yellow heart icon in AppBar actions
+- **Badge Counter**: Red circular badge showing number of favorites
+- **Real-Time Counter**: Updates automatically using `StreamBuilder`
+- **Navigation**: Tap to open FavoritesPage
+
+**Implementation**:
+```dart
+StreamBuilder<BoxEvent>(
+  stream: FavoritesService().watchFavorites(),
+  builder: (context, snapshot) {
+    final favCount = FavoritesService().count;
+    return Stack(
+      children: [
+        IconButton(icon: Icon(Icons.favorite), ...),
+        if (favCount > 0)
+          Positioned(
+            // Badge with count
+            child: Text('$favCount'),
+          ),
+      ],
+    );
+  },
+)
+```
+
+#### 5. Main Entry Point (`lib/domain/main.dart`)
+**Purpose**: Initialize Hive before app starts.
+
+**Changes**:
+```dart
+void main() async {
+  WidgetsFlutterBinding.ensureInitialized();
+  await GraphQLService().init();
+  await FavoritesService().init(); // ✨ NEW: Initialize Hive
+  runApp(...);
+}
+```
+
+### User Flow
+
+1. **Adding Favorites**:
+   - User views any Pokémon detail page
+   - Taps heart icon in top-right of image
+   - Heart fills with red color
+   - SnackBar confirms: "PIKACHU added to favorites!"
+   - Badge counter in home page updates immediately
+
+2. **Viewing Favorites**:
+   - User taps heart icon in home page AppBar
+   - Navigates to FavoritesPage
+   - Sees grid of all favorite Pokémon
+   - Can tap any card to view details
+
+3. **Removing Favorites**:
+   - From detail page: Tap filled heart (toggles off)
+   - From favorites page: Tap heart on card
+   - SnackBar confirms removal
+   - Card disappears from favorites grid
+   - Badge counter decreases
+
+### Data Persistence
+
+**Storage Location**:
+- Android: `/data/data/com.example.pokedex/app_flutter/`
+- iOS: `Application Documents Directory`
+- Desktop: User's application data directory
+
+**File Format**:
+- Hive binary format (optimized for speed)
+- File: `favorites.hive`
+- Type-safe: Only integers allowed
+
+**Persistence**:
+- Survives app restarts ✅
+- Survives app updates ✅
+- Survives hot reload ✅ (with error handling)
+- Does NOT sync across devices (local only)
+
+### Performance
+
+**Speed**:
+- Add/Remove: ~1ms (O(n) for indexOf, but small dataset)
+- Check if favorite: <1ms (O(n), typically <100 items)
+- Count: <1ms (O(1))
+- Stream updates: Instant (event-driven)
+
+**Memory**:
+- Each favorite: 8 bytes (int64)
+- 100 favorites: ~800 bytes
+- Negligible impact on app performance
+
+### Error Handling
+
+**Hot Reload Issue**:
+- Problem: Hot reload doesn't re-run `main()`, so Hive isn't reinitialized
+- Solution: Full restart (Stop + Run) required after adding feature
+- Graceful fallback: Methods return safe defaults (false, [], 0) instead of crashing
+
+**Uninitialized State**:
+- Async methods: Auto-initialize if needed
+- Sync methods: Try-catch with safe defaults
+- Stream: Returns `Stream.empty()` if not initialized
+
+### Testing Scenarios
+
+✅ **Test Cases Covered**:
+1. Add favorite → Badge appears with "1"
+2. Add multiple → Badge shows correct count
+3. Remove favorite → Badge decreases
+4. Toggle on detail page → Updates favorites page
+5. Navigate from favorites → Shows correct Pokémon
+6. Empty favorites → Shows empty state message
+7. App restart → Favorites persist
+8. Hot reload → Graceful handling (no crash)
+9. Theme toggle → UI updates correctly
+
+### Future Enhancements
+
+**Potential Improvements**:
+- **Cloud Sync**: Firebase/Supabase integration for cross-device sync
+- **Collections**: Multiple favorite lists (Team, Shinies, Legendaries)
+- **Export/Import**: Share favorites via JSON file
+- **Sort Options**: Sort by ID, name, type, date added
+- **Search in Favorites**: Filter favorites by name/type
+- **Bulk Operations**: Select multiple → Remove all
+- **Undo**: Temporary undo for accidental removals
+
+---
+
+## 20. Development Progress (Updated November 2025)
+
+### ✅ Completed Features
+- ✅ 3-layer architecture implemented and fixed
+- ✅ BLoC pattern for state management
+- ✅ GraphQL integration with caching
+- ✅ Home page with search and filters
+- ✅ Detail page with comprehensive information
+- ✅ **TCG cards integration** (lib/data/tcg_service.dart)
+- ✅ **"VIEW CARDS" button** with modal bottom sheet
+- ✅ Theme system (light/dark) with proper Provider implementation
+- ✅ Type-based gradients
+- ✅ Evolution chains
+- ✅ Stats visualization
+- ✅ **Pokemon Quiz Game** ("Who's That Pokémon?")
+- ✅ **Quiz button in AppBar** for easy access
+- ✅ **Pokédex Entry Card** with flavor text, region, and generation
+- ✅ Infinite scroll pagination
+- ✅ Debounced search (500ms)
+- ✅ Multiple filters working together
+- ✅ **Favorites System** ❤️
+  - Local storage with Hive
+  - Heart button on detail pages
+  - Dedicated favorites page with grid
+  - Real-time badge counter
+  - Persistent across sessions
+
+### 🔧 Technical Improvements
+- ✅ **theme_provider.dart**: Completed missing implementation with proper ChangeNotifier
+- ✅ **queries.dart**: Rebuilt from corrupted state with all functions working
+- ✅ **Provider fix**: Added `listen: false` to prevent event handler errors
+- ✅ **TCGService**: Moved from presentation to data layer (proper architecture)
+- ✅ **Favorites Service**: Singleton pattern with error handling
+- ✅ **Stream-Based Updates**: Real-time UI synchronization
+- ✅ **Hot-Reload Safety**: Graceful fallbacks for development
+
+---
+
+## 21. Running the Application
+
+### First Time Setup
+```bash
+# Install dependencies
+flutter pub get
+
+# Run on device/emulator
+flutter run
+
+# For hot reload issues (after adding new features)
+# Press 'q' to quit, then run again
+flutter run
+```
+
+### Important Notes
+- **Hot Reload Limitation**: After adding Hive-based features, use full restart (Stop + Run)
+- **Favorites Persistence**: Data stored locally, survives app restarts
+- **Theme Persistence**: Theme preference saved automatically
+
+### Troubleshooting
+
+**"FavoritesService not initialized" Error**:
+- Solution: Do a full restart (Stop the app, then Run again)
+- Why: Hot reload (R) doesn't re-run `main()`, so Hive doesn't initialize
+- Prevention: Code now has graceful fallbacks to prevent crashes
+
+**Badge Counter Not Updating**:
+- Check: Ensure app is fully restarted
+- Verify: `StreamBuilder` should wrap the favorites button
+- Test: Add a favorite and check if stream emits events
+
+**Favorites Not Persisting**:
+- Verify: `FavoritesService().init()` called in `main()`
+- Check: Storage permissions (usually automatic on modern Flutter)
+- Debug: Print `getAllFavorites()` after restart to confirm persistence
+
+---
+

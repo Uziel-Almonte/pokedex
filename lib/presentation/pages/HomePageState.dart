@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:google_fonts/google_fonts.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '../theme_provider.dart';
 import 'package:provider/provider.dart';
 import '../page_necessities/home_page/PokeSelect.dart';
@@ -13,6 +14,8 @@ import '/domain/state_management/bloc_state_home.dart';
 
 import '/presentation/page_necessities/home_page/showFilterDialog.dart' as show_filter_dialog;
 import 'PokemonQuizPage.dart';
+import 'FavoritesPage.dart';
+import '/data/favorites_service.dart';
 
 
 
@@ -147,6 +150,91 @@ class HomePageState extends State<home_page.PokeHomePage> {
         ),
       ),
       actions: [
+        // ====================================================================
+        // ❤️ FAVORITES BUTTON - NAVIGATION TO FAVORITES PAGE
+        // ====================================================================
+        //
+        // This button provides quick access to the favorites page from anywhere.
+        // It includes a badge counter showing the number of favorited Pokémon.
+        //
+        // REAL-TIME UPDATES:
+        // - Uses StreamBuilder to watch FavoritesService for changes
+        // - Badge counter updates immediately when favorites are added/removed
+        // - Works across all pages (home, detail, favorites)
+        //
+        // BADGE BEHAVIOR:
+        // - Hidden when count is 0 (no favorites yet)
+        // - Shows count when >= 1 (e.g., "3" means 3 favorites)
+        // - Maximum practical display is 99+ (badge gets too small after that)
+        //
+        // USER INTERACTION:
+        // 1. User taps heart icon
+        // 2. Navigates to FavoritesPage
+        // 3. User can view all favorites in grid layout
+        // 4. Can tap any favorite to view details or remove from favorites
+        //
+        // DESIGN:
+        // - Yellow heart icon (matches Pokémon theme)
+        // - Red circular badge with white border
+        // - White text on red background for high contrast
+        // - Positioned in top-right of icon button
+        //
+        StreamBuilder<BoxEvent>(
+          // Watch favorites stream for real-time updates
+          // Rebuilds whenever any favorite is added or removed
+          stream: FavoritesService().watchFavorites(),
+          builder: (context, snapshot) {
+            // Get current count of favorites
+            // This is O(1) operation - very fast
+            final favCount = FavoritesService().count;
+
+            return Stack(
+              children: [
+                // Heart icon button
+                IconButton(
+                  icon: const Icon(Icons.favorite, color: Colors.yellow),
+                  tooltip: 'Favorites', // Shown on long press
+                  onPressed: () {
+                    // Navigate to favorites page
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const FavoritesPage(),
+                      ),
+                    );
+                  },
+                ),
+                // Badge counter (only shown when favCount > 0)
+                if (favCount > 0)
+                  Positioned(
+                    right: 8,  // Position from right edge
+                    top: 8,    // Position from top edge
+                    child: Container(
+                      padding: const EdgeInsets.all(2),
+                      decoration: BoxDecoration(
+                        color: Colors.red,  // Red badge background
+                        borderRadius: BorderRadius.circular(10), // Circular badge
+                        border: Border.all(color: Colors.white, width: 1), // White border
+                      ),
+                      constraints: const BoxConstraints(
+                        minWidth: 16,  // Minimum width for single digits
+                        minHeight: 16, // Minimum height for single digits
+                      ),
+                      child: Text(
+                        '$favCount', // Display count (e.g., "1", "5", "12")
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                        textAlign: TextAlign.center,
+                      ),
+                    ),
+                  ),
+              ],
+            );
+          },
+        ),
         // Pokemon Quiz button
         IconButton(
           icon: const Icon(Icons.quiz, color: Colors.yellow),
@@ -353,4 +441,3 @@ class HomePageState extends State<home_page.PokeHomePage> {
     );
   }
 }
-

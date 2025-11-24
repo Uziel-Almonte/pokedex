@@ -1,16 +1,46 @@
-// Import Flutter material design package
+/// ============================================================================
+/// DETAIL PAGE STATE - COMPREHENSIVE POKÉMON INFORMATION DISPLAY
+/// ============================================================================
+///
+/// This StatefulWidget displays detailed information about a single Pokémon,
+/// including stats, abilities, moves, evolution chain, TCG cards, and more.
+///
+/// KEY FEATURES:
+/// - **Favorites Integration**: Heart button to add/remove from favorites ❤️
+/// - **Real-Time Updates**: StreamBuilder syncs favorite status across app
+/// - **Navigation**: Previous/Next buttons to browse Pokémon
+/// - **Search**: Search bar to jump to specific Pokémon by name
+/// - **Comprehensive Data**: Stats, abilities, moves, evolutions, physical stats
+/// - **TCG Cards**: View trading cards for this Pokémon
+/// - **Theme Support**: Adapts to light/dark mode
+///
+/// FAVORITES FUNCTIONALITY:
+/// - Heart icon positioned on top-right of Pokémon image
+/// - Filled red heart = favorited, outline grey heart = not favorited
+/// - Tap to toggle favorite status
+/// - Shows SnackBar confirmation (green for add, orange for remove)
+/// - Updates in real-time using StreamBuilder
+///
+/// DATA FLOW:
+/// 1. Receives Pokémon ID from navigation or defaults to 1
+/// 2. Fetches Pokémon data from GraphQL API
+/// 3. Displays all information in scrollable cards
+/// 4. User can toggle favorite, which updates Hive storage
+/// 5. StreamBuilder detects change and updates UI immediately
+///
+/// ============================================================================
+
 import 'package:flutter/material.dart';
 import 'dart:async';
-// Import GraphQL Flutter package for GraphQL client and widgets
 import 'package:graphql_flutter/graphql_flutter.dart';
-// Import the GraphQLService singleton
 import '../../domain/main.dart';
-//fonts de google
 import 'package:google_fonts/google_fonts.dart';
+import 'package:hive_flutter/hive_flutter.dart';
 import '/presentation/theme_provider.dart';
 import 'package:provider/provider.dart';
 
 import 'package:pokedex/data/queries.dart';
+import 'package:pokedex/data/favorites_service.dart';
 import '../page_necessities/detail_page/showPokemonCards.dart' as show_pokemon_cards;
 import '/domain/models/Pokemon.dart';
 
@@ -21,29 +51,57 @@ import '../page_necessities/detail_page/StatsCard.dart' as stats_card;
 import '../page_necessities/detail_page/PhysicalStatsCard.dart' as physical_stats_card;
 import '../page_necessities/detail_page/PokedexEntryCard.dart' as pokedex_entry_card;
 
+/// ============================================================================
+/// DETAIL PAGE STATE CLASS
+/// ============================================================================
 
-
-// State class for MyHomePage
+/// State class for PokeDetailPage
+///
+/// Manages the UI state and logic for displaying detailed Pokémon information.
+/// Handles navigation, search, favorites, and data fetching.
 class DetailPageState extends State<PokeDetailPage> {
-  // Counter to keep track of the current Pokémon ID
-  // This increments when the user presses the floating action button
+  // ============================================================================
+  // STATE VARIABLES
+  // ============================================================================
+
+  /// Current Pokémon ID being displayed
+  ///
+  /// Starts at the initialPokemonId passed from navigation, or defaults to 1.
+  /// Changes when user navigates with previous/next buttons or searches.
   int _counter = 1;
 
+  /// Singleton instance of FavoritesService for managing favorites
+  ///
+  /// Used to check if current Pokémon is favorited and to toggle favorite status.
+  /// The singleton pattern ensures we're always working with the same Hive database.
+  final FavoritesService _favoritesService = FavoritesService();
+
+  /// Getter for current theme mode (light/dark)
+  ///
+  /// Uses Provider to access theme state without causing unnecessary rebuilds.
+  /// The `listen: false` parameter is crucial - we only need the current value,
+  /// not continuous updates (which would cause excessive rebuilds).
   bool get isDarkMode => Provider.of<AppThemeState>(context, listen: false).isDarkMode;
 
-  // Text controller for search bar - manages the text input state
-  // Allows us to read, clear, and listen to changes in the search field
+  /// Text controller for the search bar
+  ///
+  /// Manages the text input state for searching Pokémon by name.
+  /// Allows us to read, clear, and listen to changes in the search field.
   final TextEditingController _searchController = TextEditingController();
 
-  // Timer for debounce functionality - prevents excessive API calls
-  // Debounce waits for the user to stop typing before triggering the search
-  // This improves performance by avoiding a query on every keystroke
+  /// Timer for debounce functionality
+  ///
+  /// Prevents excessive API calls by waiting 500ms after user stops typing
+  /// before triggering the search. This improves performance significantly.
   Timer? _debounce;
 
-  // Current search query string - stores the active search term
-  // When empty, the app shows Pokémon by ID; when filled, it searches by name
+  /// Current search query string
+  ///
+  /// Stores the active search term. When empty, displays Pokémon by ID.
+  /// When filled, searches for Pokémon by name.
   String _searchQuery = '';
 
+  /// Gradient list for UI styling (currently unused, can be removed)
   final gradientList = <List<Color>>[
     [
       Color.fromRGBO(92, 100, 250, 1.0),
@@ -55,22 +113,40 @@ class DetailPageState extends State<PokeDetailPage> {
     ],
   ];
 
-  // Add initState to listen to controller changes so the suffix icon updates immediately
+  // ============================================================================
+  // LIFECYCLE METHODS
+  // ============================================================================
+
+  /// Initialize state when widget is first created
+  ///
+  /// WHAT IT DOES:
+  /// 1. Sets initial Pokémon ID from widget parameter or defaults to 1
+  /// 2. Adds listener to search controller for immediate UI updates
+  ///
+  /// WHY THE LISTENER:
+  /// - Without it, the clear button wouldn't appear immediately when typing
+  /// - With it, any change to search text triggers a rebuild
+  /// - Checks `mounted` to avoid setState after widget disposal
   @override
   void initState() {
     super.initState();
+
+    // Set initial Pokémon ID from navigation parameter or default to 1 (Bulbasaur)
     _counter = widget.initialPokemonId ?? 1;
-    // When the controller text changes we call setState() so widgets that depend on
-    // _searchController.text (like the clear button) rebuild immediately instead of
-    // waiting for the debounce to complete.
+
+    // Add listener to search controller for immediate UI updates
+    // This ensures the clear button appears/disappears instantly
     _searchController.addListener(() {
-      // Only rebuild if mounted to avoid setState after dispose
-      if (mounted) setState(() {});
+      if (mounted) setState(() {}); // Only rebuild if widget still exists
     });
   }
 
-  // Cleanup method called when this widget is removed from the widget tree
-  // It's important to dispose of controllers and timers to prevent memory leaks
+  /// Cleanup when widget is removed from the widget tree
+  ///
+  /// CRITICAL FOR MEMORY MANAGEMENT:
+  /// - Dispose of text controller to prevent memory leaks
+  /// - Cancel any pending debounce timer
+  /// - Always call super.dispose() last
   @override
   void dispose() {
     _searchController.dispose(); // Release text controller resources
@@ -78,28 +154,34 @@ class DetailPageState extends State<PokeDetailPage> {
     super.dispose(); // Call parent dispose method
   }
 
-  // Function to handle search input changes with debounce
-  // DEBOUNCE EXPLANATION:
-  // Instead of searching immediately on every keystroke, we wait 500ms after
-  // the user stops typing. This reduces API calls from dozens to just one.
-  //
-  // HOW IT WORKS:
-  // 1. User types a character
-  // 2. Cancel any existing timer (if user is still typing)
-  // 3. Start a new 500ms timer
-  // 4. If 500ms passes without new input, execute the search
-  // 5. If user types again, restart from step 2
+  // ============================================================================
+  // SEARCH FUNCTIONALITY
+  // ============================================================================
+
+  /// Handle search input changes with debounce
+  ///
+  /// DEBOUNCE PATTERN:
+  /// Instead of searching on every keystroke, we wait 500ms after the user
+  /// stops typing. This reduces API calls from potentially dozens to just one.
+  ///
+  /// HOW IT WORKS:
+  /// 1. User types a character
+  /// 2. If timer exists, cancel it (user is still typing)
+  /// 3. Start a new 500ms timer
+  /// 4. If 500ms passes without new input, execute the search
+  /// 5. If user types again before 500ms, restart from step 2
+  ///
+  /// EXAMPLE:
+  /// User types "pikachu" (7 characters)
+  /// Without debounce: 7 API calls
+  /// With debounce: 1 API call (after user stops typing)
   void _onSearchChanged(String query) {
-    // Check if there's an active debounce timer and cancel it
-    // This happens when the user types before the previous timer finishes
+    // Cancel existing timer if user is still typing
     if (_debounce?.isActive ?? false) _debounce!.cancel();
 
-    // Create a new timer that waits 500 milliseconds (half a second)
-    // Only after this delay will the search query be updated
+    // Start new 500ms timer
     _debounce = Timer(const Duration(milliseconds: 500), () {
-      // Update the state with the new search query
-      // toLowerCase() makes the search case-insensitive
-      // trim() removes leading/trailing whitespace
+      // After 500ms of no typing, update search query
       setState(() {
         _searchQuery = query.toLowerCase().trim();
       });
@@ -206,25 +288,123 @@ class DetailPageState extends State<PokeDetailPage> {
                       children: <Widget>[
                         const SizedBox(height: 20), // Add top spacing
                         // Container with decoration for the Pokémon image
-                        Container(
-                          padding: const EdgeInsets.all(20), // Add 20 pixels of padding inside the container on all sides
-                          decoration: BoxDecoration(
-                            color: isDarkMode ? Colors.grey[800] : Colors.white, // Set container background to white for a clean card look
-                            borderRadius: BorderRadius.circular(20), // Round the corners with 20 pixel radius for modern look
-                            boxShadow: [ // Add shadow effects to the container for depth and elevation
-                              BoxShadow(
-                                color: Colors.grey.withOpacity(0.5), // Use semi-transparent grey (50% opacity) for shadow
-                                spreadRadius: 5, // Spread the shadow 5 pixels outward from the container
-                                blurRadius: 7, // Blur the shadow edges by 7 pixels for soft effect
-                                offset: const Offset(0, 3), // Move shadow 3 pixels down (0 horizontal, 3 vertical)
+                        Stack(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(20), // Add 20 pixels of padding inside the container on all sides
+                              decoration: BoxDecoration(
+                                color: isDarkMode ? Colors.grey[800] : Colors.white, // Set container background to white for a clean card look
+                                borderRadius: BorderRadius.circular(20), // Round the corners with 20 pixel radius for modern look
+                                boxShadow: [ // Add shadow effects to the container for depth and elevation
+                                  BoxShadow(
+                                    color: Colors.grey.withOpacity(0.5), // Use semi-transparent grey (50% opacity) for shadow
+                                    spreadRadius: 5, // Spread the shadow 5 pixels outward from the container
+                                    blurRadius: 7, // Blur the shadow edges by 7 pixels for soft effect
+                                    offset: const Offset(0, 3), // Move shadow 3 pixels down (0 horizontal, 3 vertical)
+                                  ),
+                                ],
                               ),
-                            ],
-                          ),
-                          child: Image.network(
-                            'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon.id}.png',
-                            height: 150, // Set image height to 150 pixels
-                            width: 150, // Set image width to 150 pixels (square image)
-                          ),
+                              child: Image.network(
+                                'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon.id}.png',
+                                height: 150, // Set image height to 150 pixels
+                                width: 150, // Set image width to 150 pixels (square image)
+                              ),
+                            ),
+                            // ========================================================
+                            // ❤️ FAVORITE BUTTON - HEART ICON OVERLAY
+                            // ========================================================
+                            //
+                            // This is the main favorites feature UI component!
+                            // Positioned absolutely on top-right of Pokémon image.
+                            //
+                            // REAL-TIME UPDATES:
+                            // - Uses StreamBuilder to watch for changes in favorites
+                            // - Automatically updates when favorites are added/removed
+                            // - Works across all pages (home, detail, favorites)
+                            //
+                            // VISUAL STATES:
+                            // - Filled red heart (❤️): Currently favorited
+                            // - Outlined grey heart (🤍): Not favorited
+                            //
+                            // USER INTERACTION:
+                            // 1. User taps heart icon
+                            // 2. toggleFavorite() is called (async operation)
+                            // 3. Hive database is updated
+                            // 4. StreamBuilder detects change
+                            // 5. UI rebuilds with new state
+                            // 6. SnackBar shows confirmation message
+                            //
+                            // DESIGN:
+                            // - White circular background (90% opacity)
+                            // - Subtle shadow for depth
+                            // - 28px icon size for easy tapping
+                            // - Positioned 8px from top and right edges
+                            //
+                            Positioned(
+                              top: 8,
+                              right: 8,
+                              child: StreamBuilder<BoxEvent>(
+                                // Watch favorites stream for real-time updates
+                                // When any favorite is added/removed, this rebuilds
+                                stream: _favoritesService.watchFavorites(),
+                                builder: (context, snapshot) {
+                                  // Check if current Pokémon is favorited
+                                  // This is a synchronous call - very fast (O(n) but small dataset)
+                                  final isFavorite = _favoritesService.isFavorite(pokemon.id);
+
+                                  return Container(
+                                    // White circular background for visibility over any image
+                                    decoration: BoxDecoration(
+                                      color: Colors.white.withOpacity(0.9),
+                                      shape: BoxShape.circle,
+                                      boxShadow: [
+                                        BoxShadow(
+                                          color: Colors.black.withOpacity(0.2),
+                                          blurRadius: 4,
+                                          offset: const Offset(0, 2),
+                                        ),
+                                      ],
+                                    ),
+                                    child: IconButton(
+                                      // Dynamic icon based on favorite status
+                                      icon: Icon(
+                                        isFavorite ? Icons.favorite : Icons.favorite_border,
+                                        color: isFavorite ? Colors.red : Colors.grey[600],
+                                        size: 28,
+                                      ),
+                                      onPressed: () async {
+                                        // Toggle favorite status (add if not favorite, remove if favorite)
+                                        await _favoritesService.toggleFavorite(pokemon.id);
+
+                                        // Trigger rebuild to update UI immediately
+                                        setState(() {});
+
+                                        // Show confirmation SnackBar with appropriate message and color
+                                        if (mounted) {
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            SnackBar(
+                                              content: Text(
+                                                // Check current state after toggle
+                                                _favoritesService.isFavorite(pokemon.id)
+                                                    ? '${pokemon.name.toUpperCase()} added to favorites!'
+                                                    : '${pokemon.name.toUpperCase()} removed from favorites',
+                                                style: GoogleFonts.pressStart2p(fontSize: 10),
+                                              ),
+                                              duration: const Duration(seconds: 2),
+                                              // Green for add, orange for remove
+                                              backgroundColor: _favoritesService.isFavorite(pokemon.id)
+                                                  ? Colors.green
+                                                  : Colors.orange,
+                                            ),
+                                          );
+                                        }
+                                      },
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: 30), // Add 30 pixels of vertical spacing between elements
                         // Pokémon ID with styled text

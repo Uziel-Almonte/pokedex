@@ -84,9 +84,9 @@ X - Mantener filtros activos entre sesiones.
 
 5. Favoritos y Persistencia Local — 10 %
 
-X - Guardar Pokémon favoritos en almacenamiento local (Hive, Isar u otro).
+O - Guardar Pokémon favoritos en almacenamiento local (Hive, Isar u otro).
 
-X - Mostrar lista de favoritos en vista dedicada.
+O - Mostrar lista de favoritos en vista dedicada.
 
 X - Habilitar modo offline para favoritos y último listado visto.
 
