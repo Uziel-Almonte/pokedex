@@ -342,6 +342,7 @@ class HomePageState extends State<home_page.PokeHomePage> {
                       currentState is HomeLoaded ? currentState.selectedGeneration : null,
                       currentState is HomeLoaded ? currentState.selectedAbility : null,
                       currentState is HomeLoaded ? currentState.sortOrder : 'asc',
+                      currentState is HomeLoaded ? (currentState.sortBy ?? 'id') : 'id',
                     );
                     if (result != null && mounted) {
                       context.read<HomeBloc>().add(UpdateFilters(
@@ -349,6 +350,7 @@ class HomePageState extends State<home_page.PokeHomePage> {
                         generation: result['generation'],
                         ability: result['ability'],
                         sortOrder: result['sortOrder'],
+                        sortBy: result['sortBy'],
                       ));
                     }
                   },
@@ -363,7 +365,15 @@ class HomePageState extends State<home_page.PokeHomePage> {
   }
 
   Widget _buildPokemonList(BuildContext context) {
-    return BlocBuilder<HomeBloc, HomeState>(
+    return BlocListener<HomeBloc, HomeState>(
+        listener: (context, state) {
+          // Scroll to top whenever we get a new HomeLoaded state
+          // This triggers when filters change, search changes, or sort order changes
+          if (state is HomeLoaded && _scrollController.hasClients) {
+            _scrollController.jumpTo(0);
+          }
+        },
+      child: BlocBuilder<HomeBloc, HomeState>(
       builder: (context, state) {
         if (state is HomeLoading) {
           return const Center(
@@ -438,6 +448,7 @@ class HomePageState extends State<home_page.PokeHomePage> {
 
         return const SizedBox.shrink();
       },
+      ),
     );
   }
 }

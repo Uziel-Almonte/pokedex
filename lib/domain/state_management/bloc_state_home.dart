@@ -16,6 +16,7 @@ class LoadPokemonList extends HomeEvent {
   final int? selectedGeneration;
   final String? selectedAbility;
   final String? sortOrder;
+  final String? sortBy;
 
   const LoadPokemonList({
     required this.pokemonId,
@@ -23,10 +24,11 @@ class LoadPokemonList extends HomeEvent {
     this.selectedGeneration,
     this.selectedAbility,
     this.sortOrder,
+    this.sortBy,
   });
 
   @override
-  List<Object?> get props => [pokemonId, selectedType, selectedGeneration, selectedAbility, sortOrder];
+  List<Object?> get props => [pokemonId, selectedType, selectedGeneration, selectedAbility, sortOrder, sortBy];
 }
 
 class LoadMorePokemon extends HomeEvent {
@@ -47,11 +49,14 @@ class UpdateFilters extends HomeEvent {
   final int? generation;
   final String? ability;
   final String? sortOrder;
+  final String? sortBy;
 
-  const UpdateFilters({this.type, this.generation, this.ability, this.sortOrder});
+
+  const UpdateFilters({this.type, this.generation, this.ability, this.sortOrder, this.sortBy});
 
   @override
   List<Object?> get props => [type, generation, ability];
+
 }
 
 // States
@@ -74,7 +79,9 @@ class HomeLoaded extends HomeState {
   final int? selectedGeneration;
   final String? selectedAbility;
   final String sortOrder;
+  final String sortBy;
   final bool hasReachedMax;
+  final int currentSearchPage;
 
   const HomeLoaded({
     required this.pokemonList,
@@ -84,7 +91,9 @@ class HomeLoaded extends HomeState {
     this.selectedGeneration,
     this.selectedAbility,
     this.sortOrder='asc',
+    this.sortBy='id',
     this.hasReachedMax = false,
+    this.currentSearchPage = 1,
   });
 
   @override
@@ -96,7 +105,9 @@ class HomeLoaded extends HomeState {
     selectedGeneration,
     selectedAbility,
     sortOrder,
+    sortBy,
     hasReachedMax,
+    currentSearchPage,
   ];
 
   HomeLoaded copyWith({
@@ -108,6 +119,8 @@ class HomeLoaded extends HomeState {
     String? selectedAbility,
     bool? hasReachedMax,
     String? sortOrder,
+    String? sortBy,
+    int? currentSearchPage,
   }) {
     return HomeLoaded(
       pokemonList: pokemonList ?? this.pokemonList,
@@ -118,6 +131,8 @@ class HomeLoaded extends HomeState {
       selectedAbility: selectedAbility ?? this.selectedAbility,
       hasReachedMax: hasReachedMax ?? this.hasReachedMax,
       sortOrder: sortOrder ?? this.sortOrder,
+      sortBy: sortBy ?? this.sortBy,
+      currentSearchPage: currentSearchPage ?? this.currentSearchPage,
     );
   }
 }
@@ -162,6 +177,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         event.selectedGeneration,
         event.selectedAbility,
         event.sortOrder ?? 'asc',
+        event.sortBy ?? 'id',
         1, // Start from page 1
       );
 
@@ -188,18 +204,31 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     final currentState = state;
     if (currentState is HomeLoaded && !currentState.hasReachedMax) {
       try {
-        // Calculate the next starting ID for pagination
-        final nextPage = (currentState.pokemonList.length ~/ _pageSize) + 1;
+        List<Map<String, dynamic>> morePokemon;
+        int nextPage;
 
-        // Fetch more Pokemon using the GraphQL query with filters
-        final morePokemon = await fetchPokemonList(
-          client,
-          currentState.selectedType,
-          currentState.selectedGeneration,
-          currentState.selectedAbility,
-          currentState.sortOrder,
-          nextPage,
-        );
+        // Check if we're in search mode
+        if (currentState.searchQuery.isNotEmpty) {
+          // Use currentSearchPage counter for search pagination
+          nextPage = currentState.currentSearchPage + 1;
+          morePokemon = await searchPokemonByName(
+            currentState.searchQuery,
+            client,
+            nextPage,
+          );
+        } else {
+          // Normal pagination with filters
+          nextPage = (currentState.pokemonList.length ~/ _pageSize) + 1;
+          morePokemon = await fetchPokemonList(
+            client,
+            currentState.selectedType,
+            currentState.selectedGeneration,
+            currentState.selectedAbility,
+            currentState.sortOrder,
+            currentState.sortBy,
+            nextPage,
+          );
+        }
 
         // Append to existing list instead of replacing
         final updatedList = [...currentState.pokemonList, ...morePokemon];
@@ -207,6 +236,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         emit(currentState.copyWith(
           pokemonList: updatedList,
           hasReachedMax: morePokemon.length < _pageSize,
+          currentSearchPage: currentState.searchQuery.isNotEmpty ? nextPage : currentState.currentSearchPage,
         ));
       } catch (e) {
         emit(HomeError(e.toString()));
@@ -231,6 +261,8 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
           selectedType: currentState.selectedType,
           selectedGeneration: currentState.selectedGeneration,
           selectedAbility: currentState.selectedAbility,
+          sortOrder: currentState.sortOrder,
+          sortBy: currentState.sortBy,
         ));
       }
       return;
@@ -238,12 +270,13 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
     emit(HomeLoading());
     try {
-      final results = await searchPokemonByName(event.query, client);
+      final results = await searchPokemonByName(event.query, client, 1);
       emit(HomeLoaded(
         pokemonList: results,
         currentPokemonId: 1,
         searchQuery: event.query,
-        hasReachedMax: true,
+        currentSearchPage: 1,
+        hasReachedMax: results.length < _pageSize,
       ));
     } catch (e) {
       emit(HomeError(e.toString()));
@@ -261,6 +294,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       selectedGeneration: event.generation,
       selectedAbility: event.ability,
       sortOrder: event.sortOrder ?? 'asc',
+      sortBy: event.sortBy ?? 'id',
     ));
   }
 }

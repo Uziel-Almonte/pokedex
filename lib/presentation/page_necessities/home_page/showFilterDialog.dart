@@ -17,7 +17,14 @@ import 'package:google_fonts/google_fonts.dart';
 // Example: HP          45           [████████░░░░░░░░░░]
 //
 // RETURNS: A Row widget containing the stat display
-Future<Map<String, dynamic>?> showFilterDialog(BuildContext context, String? _selectedType, int? _selectedGeneration, String? _selectedAbility, String _sortOrder) {
+Future<Map<String, dynamic>?> showFilterDialog(
+    BuildContext context,
+    String? _selectedType,
+    int? _selectedGeneration,
+    String? _selectedAbility,
+    String _sortOrder,
+    String _sortBy
+    ) {
   return showDialog<Map<String, dynamic>>(
     context: context,
     builder: (BuildContext context) {
@@ -39,7 +46,47 @@ Future<Map<String, dynamic>?> showFilterDialog(BuildContext context, String? _se
                     children: [
                       Expanded(
                         child: RadioListTile<String>(
-                          title: const Text('Ascending', style: TextStyle(fontSize: 12)),
+                          title: const Text('ID', style: TextStyle(fontSize: 12)),
+                          value: 'id',
+                          groupValue: _sortBy,
+                          onChanged: (value) {
+                            setDialogState(() {
+                              _sortBy = value!;
+                            });
+                          },
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: const Text('Name (A-Z)', style: TextStyle(fontSize: 12)),
+                          value: 'name',
+                          groupValue: _sortBy,
+                          onChanged: (value) {
+                            setDialogState(() {
+                              _sortBy = value!;
+                            });
+                          },
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const Divider(height: 32),
+
+                  // Sort Order (código existente)
+                  Text('Sort Order:', style: GoogleFonts.roboto(fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 8),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: RadioListTile<String>(
+                          title: Text(
+                              _sortBy == 'id' ? 'Ascending' : 'A-Z',
+                              style: const TextStyle(fontSize: 12)
+                          ),
                           value: 'asc',
                           groupValue: _sortOrder,
                           onChanged: (value) {
@@ -53,7 +100,10 @@ Future<Map<String, dynamic>?> showFilterDialog(BuildContext context, String? _se
                       ),
                       Expanded(
                         child: RadioListTile<String>(
-                          title: const Text('Descending', style: TextStyle(fontSize: 12)),
+                          title: Text(
+                              _sortBy == 'id' ? 'Descending' : 'Z-A',
+                              style: const TextStyle(fontSize: 12)
+                          ),
                           value: 'desc',
                           groupValue: _sortOrder,
                           onChanged: (value) {
@@ -67,6 +117,7 @@ Future<Map<String, dynamic>?> showFilterDialog(BuildContext context, String? _se
                       ),
                     ],
                   ),
+                  const Divider(height: 32),
                   // FILTRO POR TIPO
                   Text('Type:', style: GoogleFonts.roboto(fontWeight: FontWeight.bold)),
                   const SizedBox(height: 8),
@@ -155,6 +206,7 @@ Future<Map<String, dynamic>?> showFilterDialog(BuildContext context, String? _se
                     _selectedGeneration = null;
                     _selectedAbility = null;
                     _sortOrder = 'asc';
+                    _sortBy = 'id';
                   });
                 },
                 child: const Text('Clear All'),
@@ -167,6 +219,7 @@ Future<Map<String, dynamic>?> showFilterDialog(BuildContext context, String? _se
                     'generation': _selectedGeneration,
                     'ability': _selectedAbility,
                     'sortOrder': _sortOrder,
+                    'sortBy': _sortBy,
                   });
                 },
                 style: ElevatedButton.styleFrom(

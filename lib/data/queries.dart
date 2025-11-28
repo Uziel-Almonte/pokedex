@@ -120,6 +120,7 @@ Future<List<Map<String, dynamic>>> fetchPokemonList(
   int? selectedGeneration,
   String? selectedAbility,
   String sortOrder,
+    String sortBy,
   int counter
 ) async {
   // Build dynamic filter conditions
@@ -155,9 +156,11 @@ Future<List<Map<String, dynamic>>> fetchPokemonList(
   final offset = (counter - 1) * 50;
   final orderDirection = sortOrder == 'desc' ? 'desc' : 'asc';
 
+  final orderByField = sortBy == 'name' ? 'name' : 'id';
+
   final query = '''
     query GetPokemonList {
-      pokemon_v2_pokemon($whereClause, limit: 50, offset: $offset, order_by: {id: $orderDirection}) {
+      pokemon_v2_pokemon($whereClause, limit: 50, offset: $offset, order_by: {$orderByField: $orderDirection}) {
         id
         name
         pokemon_v2_pokemontypes {
@@ -185,10 +188,12 @@ Future<List<Map<String, dynamic>>> fetchPokemonList(
 /**
  * SEARCH POKEMON BY NAME - Returns list of matching Pokémon
  */
-Future<List<Map<String, dynamic>>> searchPokemonByName(String name, GraphQLClient client) async {
+Future<List<Map<String, dynamic>>> searchPokemonByName(String name, GraphQLClient client, int counter) async {
+
+  final offset = (counter - 1) * 50;
   final query = '''
     query SearchPokemonByName {
-      pokemon_v2_pokemon(where: {name: {_ilike: "%$name%"}}, limit: 20) {
+      pokemon_v2_pokemon(where: {name: {_ilike: "%$name%"}}, limit: 50, offset: $offset, order_by: {id: asc}) {
         id
         name
         pokemon_v2_pokemontypes {
@@ -212,7 +217,7 @@ Future<List<Map<String, dynamic>>> searchPokemonByName(String name, GraphQLClien
  * SEARCH SINGLE POKEMON BY NAME - Returns first matching Pokémon
  */
 Future<Map<String, dynamic>?> searchSinglePokemonByName(String name, GraphQLClient client) async {
-  final results = await searchPokemonByName(name, client);
+  final results = await searchPokemonByName(name, client, 1);
   return results.isNotEmpty ? results.first : null;
 }
 
