@@ -88,7 +88,7 @@ O - Guardar Pokémon favoritos en almacenamiento local (Hive, Isar u otro).
 
 O - Mostrar lista de favoritos en vista dedicada.
 
-X - Habilitar modo offline para favoritos y último listado visto.
+O - Habilitar modo offline para favoritos y último listado visto.
 
 6. Animaciones y Transiciones — 5 %
 
