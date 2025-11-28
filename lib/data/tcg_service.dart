@@ -199,12 +199,9 @@ class TCGService {
       // ERROR HANDLING
       // ============================================================
       // Catch any unexpected errors (network issues, parsing errors, etc.)
-      // Log detailed error information for debugging
-      // Return empty list so UI can display "No cards found" message
-
-      print('Error fetching TCG cards: $e');
+      print('Error searching for cards: $e');
       print('Stack trace: $stackTrace');
-      return [];
+      return []; // Return empty list on error
     }
   }
 
@@ -246,5 +243,243 @@ class TCGService {
       return null;
     }
   }
-}
 
+  /// **PAGINATED CARD SEARCH - WITH BACKGROUND FETCHING**: Fetch first 3 fast, continue searching in background
+  ///
+  /// This method implements a two-phase loading strategy:
+  /// PHASE 1: Quick initial load (search until we find 3 cards, ~1-3 seconds)
+  /// PHASE 2: Background completion (continue searching all sets, cache all cards)
+  ///
+  /// PARAMETERS:
+  /// - pokemonName: The name of the Pokémon to search for (case-insensitive)
+  /// - limit: Maximum number of cards to return (default: 3)
+  /// - offset: Number of cards to skip before starting (default: 0)
+  /// - onBackgroundComplete: Optional callback when background search finishes
+  ///
+  /// RETURNS:
+  /// - Map with keys:
+  ///   * 'cards': List of card objects (up to 'limit' cards)
+  ///   * 'hasMore': Boolean indicating if more cards exist or are being searched
+  ///   * 'totalCount': Total number of cards found so far (updates as search continues)
+  ///   * 'isComplete': Boolean indicating if background search has finished
+  ///
+  /// CACHING STRATEGY:
+  /// - Static Map stores all found cards per Pokémon name
+  /// - First call (offset=0): Searches until 3 cards found, returns immediately, continues in background
+  /// - Subsequent calls: Returns from cache (either partial or complete)
+  /// - Cache grows as background search finds more cards
+  ///
+  /// PERFORMANCE:
+  /// - First 3 cards: 1-5 seconds (stops after finding 3, very fast)
+  /// - Show More (while searching): Returns next available cards from cache
+  /// - Show More (after complete): Instant from full cache
+  /// - Background search: Continues until all sets searched (10-30 seconds total)
+  static final Map<String, List<Map<String, dynamic>>> _cardsCache = {};
+  static final Map<String, bool> _searchComplete = {}; // Track if background search is done
+
+  static Future<Map<String, dynamic>> searchCardsPaginated(
+    String pokemonName, {
+    int limit = 3,
+    int offset = 0,
+    Function(int totalFound)? onBackgroundComplete,
+  }) async {
+    try {
+      final cacheKey = pokemonName.toLowerCase();
+
+      // Check if we already have a cache (partial or complete)
+      if (_cardsCache.containsKey(cacheKey)) {
+        // Return from cache (might be partial if background still searching)
+        final allCards = _cardsCache[cacheKey]!;
+        final paginatedCards = allCards.skip(offset).take(limit).toList();
+        final hasMore = offset + limit < allCards.length || !(_searchComplete[cacheKey] ?? false);
+        final isComplete = _searchComplete[cacheKey] ?? false;
+
+        print('📦 Cache: ${paginatedCards.length} cards (offset: $offset, total: ${allCards.length}, complete: $isComplete)');
+
+        return {
+          'cards': paginatedCards,
+          'hasMore': hasMore,
+          'totalCount': allCards.length,
+          'isComplete': isComplete,
+        };
+      }
+
+      // FIRST TIME - Quick initial search for first 3 cards
+      print('🔍 First fetch for "$pokemonName" - finding first $limit cards quickly...');
+
+      final setsUrl = Uri.parse('$_baseUrl/sets');
+      final setsResponse = await http.get(setsUrl);
+
+      if (setsResponse.statusCode != 200) {
+        return {'cards': [], 'hasMore': false, 'totalCount': 0, 'isComplete': true};
+      }
+
+      final dynamic setsData = json.decode(setsResponse.body);
+      final List<dynamic> sets = setsData is List ? setsData : [];
+
+      final List<Map<String, dynamic>> quickCards = [];
+      int setsSearched = 0;
+
+      // PHASE 1: Quick search - stop after finding 'limit' cards (usually 3)
+      for (var set in sets) {
+        final setId = set['id'] as String?;
+        if (setId == null) continue;
+
+        final setCardsUrl = Uri.parse('$_baseUrl/sets/$setId');
+        final setCardsResponse = await http.get(setCardsUrl);
+
+        if (setCardsResponse.statusCode == 200) {
+          final dynamic setData = json.decode(setCardsResponse.body);
+
+          if (setData is Map && setData.containsKey('cards')) {
+            final List<dynamic> cards = setData['cards'] as List<dynamic>;
+
+            for (var card in cards) {
+              if (card is Map<String, dynamic>) {
+                final cardName = (card['name'] as String?)?.toLowerCase() ?? '';
+                final searchName = pokemonName.toLowerCase();
+
+                if (cardName == searchName) {
+                  quickCards.add(card);
+
+                  // EARLY EXIT: Stop searching once we have enough cards for initial display
+                  if (quickCards.length >= limit) {
+                    // Initialize cache with what we found so far
+                    _cardsCache[cacheKey] = List.from(quickCards);
+                    _searchComplete[cacheKey] = false; // Not done yet
+
+                    print('⚡ Found first $limit cards quickly! Starting background search...');
+
+                    // Start background search to find remaining cards
+                    _continueSearchInBackground(
+                      pokemonName,
+                      sets,
+                      setsSearched,
+                      quickCards.length,
+                      onBackgroundComplete,
+                    );
+
+                    // Return first batch immediately
+                    return {
+                      'cards': quickCards,
+                      'hasMore': true, // Assume more exist (background will confirm)
+                      'totalCount': quickCards.length,
+                      'isComplete': false,
+                    };
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        setsSearched++;
+      }
+
+      // If we get here, we searched all sets and found fewer than 'limit' cards
+      _cardsCache[cacheKey] = quickCards;
+      _searchComplete[cacheKey] = true;
+
+      print('✅ Search complete! Found ${quickCards.length} total cards (all sets searched)');
+
+      if (onBackgroundComplete != null) {
+        onBackgroundComplete(quickCards.length);
+      }
+
+      return {
+        'cards': quickCards,
+        'hasMore': false,
+        'totalCount': quickCards.length,
+        'isComplete': true,
+      };
+
+    } catch (e) {
+      print('Error in paginated search: $e');
+      return {'cards': [], 'hasMore': false, 'totalCount': 0, 'isComplete': true};
+    }
+  }
+
+  /// **BACKGROUND SEARCH CONTINUATION**: Continues searching remaining sets in background
+  ///
+  /// This method runs asynchronously (fire-and-forget) to find all remaining cards
+  /// while the user views the first batch. Updates the cache as it finds more cards.
+  ///
+  /// PARAMETERS:
+  /// - pokemonName: Name to search for
+  /// - allSets: Full list of sets to search
+  /// - startIndex: Which set index to start from (where quick search left off)
+  /// - alreadyFound: Number of cards already found in quick search
+  /// - onComplete: Callback when background search finishes
+  static void _continueSearchInBackground(
+    String pokemonName,
+    List<dynamic> allSets,
+    int startIndex,
+    int alreadyFound,
+    Function(int totalFound)? onComplete,
+  ) async {
+    final cacheKey = pokemonName.toLowerCase();
+    final searchName = pokemonName.toLowerCase();
+
+    try {
+      print('🔄 Background search started from set $startIndex/${allSets.length}...');
+
+      // Continue from where quick search left off
+      for (int i = startIndex; i < allSets.length; i++) {
+        final set = allSets[i];
+        final setId = set['id'] as String?;
+        if (setId == null) continue;
+
+        final setCardsUrl = Uri.parse('$_baseUrl/sets/$setId');
+        final setCardsResponse = await http.get(setCardsUrl);
+
+        if (setCardsResponse.statusCode == 200) {
+          final dynamic setData = json.decode(setCardsResponse.body);
+
+          if (setData is Map && setData.containsKey('cards')) {
+            final List<dynamic> cards = setData['cards'] as List<dynamic>;
+
+            for (var card in cards) {
+              if (card is Map<String, dynamic>) {
+                final cardName = (card['name'] as String?)?.toLowerCase() ?? '';
+
+                if (cardName == searchName) {
+                  // Add to cache (thread-safe append)
+                  if (_cardsCache.containsKey(cacheKey)) {
+                    _cardsCache[cacheKey]!.add(card);
+                  }
+                }
+              }
+            }
+          }
+        }
+
+        // Progress logging every 20 sets
+        if ((i - startIndex) % 20 == 0 && i > startIndex) {
+          final totalFound = _cardsCache[cacheKey]?.length ?? alreadyFound;
+          print('   Background: Searched ${i + 1}/${allSets.length} sets, ${totalFound} cards total...');
+        }
+      }
+
+      // Background search complete!
+      _searchComplete[cacheKey] = true;
+      final totalFound = _cardsCache[cacheKey]?.length ?? alreadyFound;
+
+      print('✅ Background search complete! Found ${totalFound} total cards for "$pokemonName"');
+
+      if (onComplete != null) {
+        onComplete(totalFound);
+      }
+
+    } catch (e) {
+      print('Error in background search: $e');
+      _searchComplete[cacheKey] = true; // Mark as complete to prevent infinite searching
+    }
+  }
+
+  /// Clear the cards cache (useful for memory management or forced refresh)
+  static void clearCardsCache() {
+    _cardsCache.clear();
+    _searchComplete.clear();
+    print('Cards cache cleared');
+  }
+}

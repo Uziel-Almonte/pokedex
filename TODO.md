@@ -98,7 +98,7 @@ X - Animar al agregar/quitar favoritos o cambiar de vista.
 
 7. Compartir Pokémon — 5 %
 
-O - Generar una Pokémon Card desde TCG y visualizarla (botón VIEW CARDS implementado).
+O - Generar una Pokémon Card desde TCG y visualizarla (botón VIEW CARDS implementado con paginación optimizada).
 
 X - Compartir tarjeta como imagen exportable.
 
@@ -140,6 +140,3 @@ X - Desbloquear logros visuales al alcanzar puntajes altos.
 - **Diseño Retro**: Fuente Press Start 2P (estilo 8-bit) en títulos y encabezados
 
 ## Progreso General Estimado: ~45-50%
-
-
-
