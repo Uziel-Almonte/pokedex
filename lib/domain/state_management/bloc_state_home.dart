@@ -1,6 +1,8 @@
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:equatable/equatable.dart';
 import '/data/queries.dart';
+import '/domain/models/Pokemon.dart';
+import '/data/dtos/pokemon_list_dto.dart';
 
 // Events
 abstract class HomeEvent extends Equatable {
@@ -72,7 +74,7 @@ class HomeInitial extends HomeState {}
 class HomeLoading extends HomeState {}
 
 class HomeLoaded extends HomeState {
-  final List<Map<String, dynamic>> pokemonList;
+  final List<PokemonListItem> pokemonList;
   final int currentPokemonId;
   final String searchQuery;
   final String? selectedType;
@@ -111,7 +113,7 @@ class HomeLoaded extends HomeState {
   ];
 
   HomeLoaded copyWith({
-    List<Map<String, dynamic>>? pokemonList,
+    List<PokemonListItem>? pokemonList,
     int? currentPokemonId,
     String? searchQuery,
     String? selectedType,
@@ -171,7 +173,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       ) async {
     emit(HomeLoading());
     try {
-      final pokemonList = await fetchPokemonList(
+      final result = await fetchPokemonList(
         client,
         event.selectedType,
         event.selectedGeneration,
@@ -182,13 +184,13 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
       );
 
       emit(HomeLoaded(
-        pokemonList: pokemonList,
+        pokemonList: result,
         currentPokemonId: event.pokemonId,
         selectedType: event.selectedType,
         selectedGeneration: event.selectedGeneration,
         selectedAbility: event.selectedAbility,
         sortOrder: event.sortOrder ?? 'asc',
-        hasReachedMax: pokemonList.length < _pageSize,
+        hasReachedMax: result.length < 50,
       ));
     } catch (e) {
       emit(HomeError(e.toString()));
@@ -204,7 +206,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
     final currentState = state;
     if (currentState is HomeLoaded && !currentState.hasReachedMax) {
       try {
-        List<Map<String, dynamic>> morePokemon;
+        final List<PokemonListItem> morePokemon;
         int nextPage;
 
         // Check if we're in search mode
@@ -235,7 +237,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
 
         emit(currentState.copyWith(
           pokemonList: updatedList,
-          hasReachedMax: morePokemon.length < _pageSize,
+          hasReachedMax: morePokemon.length < 50,
           currentSearchPage: currentState.searchQuery.isNotEmpty ? nextPage : currentState.currentSearchPage,
         ));
       } catch (e) {
@@ -276,7 +278,7 @@ class HomeBloc extends Bloc<HomeEvent, HomeState> {
         currentPokemonId: 1,
         searchQuery: event.query,
         currentSearchPage: 1,
-        hasReachedMax: results.length < _pageSize,
+        hasReachedMax: results.length < 50,
       ));
     } catch (e) {
       emit(HomeError(e.toString()));

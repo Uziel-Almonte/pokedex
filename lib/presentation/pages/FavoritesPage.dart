@@ -257,7 +257,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
   /// - Uppercase name (Press Start 2P font)
   /// - Color-coded types
   Widget _buildPokemonCard(int pokemonId, GraphQLClient client) {
-    return FutureBuilder<Map<String, dynamic>?>(
+    return FutureBuilder<Pokemon?>(
       // Fetch Pokémon data from GraphQL API
       future: fetchPokemon(pokemonId, client),
       builder: (context, snapshot) {
@@ -303,7 +303,7 @@ class _FavoritesPageState extends State<FavoritesPage> {
         // ====================================================================
 
         // Convert GraphQL data to Pokemon object
-        final pokemon = Pokemon.fromGraphQL(snapshot.data!);
+        final pokemon = snapshot.data!;
 
         // GestureDetector wraps card to make entire card tappable
         return GestureDetector(

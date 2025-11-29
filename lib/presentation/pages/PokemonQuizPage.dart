@@ -39,6 +39,7 @@ import 'package:flutter/material.dart';
 import 'package:graphql_flutter/graphql_flutter.dart';
 // Import Google Fonts package to use the retro "Press Start 2P" font for Pokémon theme
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pokedex/domain/models/Pokemon.dart';
 // Import Dart's math library to generate random numbers for selecting random Pokémon
 import 'dart:math';
 // Import custom queries file that contains the fetchPokemon function for GraphQL data fetching
@@ -67,7 +68,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
 
   /// Stores the fetched Pokémon data (name, types, sprites, etc.) as a Map
   /// Nullable because data is fetched asynchronously after the widget initializes
-  Map<String, dynamic>? _currentPokemon;
+  Pokemon? _currentPokemon;
 
   // ============================================================================
   // UI STATE VARIABLES
@@ -404,7 +405,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
     final guess = _guessController.text.trim().toLowerCase();
     // Get the correct Pokémon name from the fetched data and normalize it the same way
     // Use null-aware operators (?.) and null coalescing (??) to handle missing data gracefully
-    final correctName = _currentPokemon?['name']?.toString().toLowerCase() ?? '';
+    final correctName = _currentPokemon?.name.toLowerCase() ?? '';
 
     // Update state based on whether the guess is correct
     setState(() {
@@ -416,7 +417,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
         _isRevealed = true; // Reveal the Pokémon (remove silhouette effect)
         _score++; // Increment the score (legacy)
         _points += 100; // Award 100 points for correct guess
-        _feedbackMessage = 'Correct! It\'s ${_currentPokemon?['name']}! +100 points'; // Show success message with points
+        _feedbackMessage = 'Correct! It\'s ${_currentPokemon?.name}! +100 points'; // Show success message with points
 
         // Check if this achievement unlocked a new milestone rank
         _checkForMilestone();
@@ -452,7 +453,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
     setState(() {
       _isRevealed = true; // Remove silhouette and show full-color image
       _attempts++; // Count this as an attempt (legacy)
-      _feedbackMessage = 'The Pokémon is ${_currentPokemon?['name']}! No points awarded.'; // Show the answer with no points message
+      _feedbackMessage = 'The Pokémon is ${_currentPokemon?.name}! No points awarded.'; // Show the answer with no points message
     });
   }
 
@@ -848,7 +849,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                               children: [
                                 // Display Pokémon name in retro font
                                 Text(
-                                  _currentPokemon?['name'] ?? 'Unknown',
+                                  _currentPokemon?.name ?? 'Unknown',
                                   style: GoogleFonts.pressStart2p(
                                     fontSize: 18,
                                     color: Colors.red,

@@ -1,11 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pokedex/data/dtos/pokemon_list_dto.dart';
+import 'package:pokedex/domain/models/Pokemon.dart';
 
 
 /// Widget reutilizable para mostrar una tarjeta de Pokémon en la lista
 /// Incluye gradientes de color basados en el tipo del Pokémon
 class PokeSelect extends StatelessWidget {
-  final Map<String, dynamic> pokemon;
+  final PokemonListItem pokemon;
   final String types;
   final bool isDarkMode;
   final VoidCallback? onTap; // Callback para manejar el tap en la tarjeta
@@ -111,8 +113,8 @@ class PokeSelect extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     // Extraer información del Pokémon del objeto Map
-    final pokemonName = pokemon['name']  ?? 'Unknown'; // Nombre del Pokémon
-    final pokemonId = pokemon['id'] ?? '0'; // ID del Pokémon para la imagen
+    final pokemonName = pokemon.name ?? 'Unknown'; // Nombre del Pokémon
+    final pokemonId = pokemon.id ?? '0'; // ID del Pokémon para la imagen
     final imageURL = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$pokemonId.png';
     return GestureDetector( // Detecta toques/clics en la tarjeta
       onTap: onTap, // Ejecuta el callback cuando se toca la tarjeta

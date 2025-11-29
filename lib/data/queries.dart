@@ -1,4 +1,8 @@
 import 'package:graphql_flutter/graphql_flutter.dart';
+import 'dtos/pokemon_dto.dart';
+import 'dtos/pokemon_list_dto.dart';
+import 'mappers/pokemon_mapper.dart';
+import '../domain/models/Pokemon.dart';
 
 /**
  * QUERIES.DART - GraphQL Query Functions
@@ -20,7 +24,7 @@ import 'package:graphql_flutter/graphql_flutter.dart';
  * - ✨ NEW: Pokédex entry (flavor text description)
  * - ✨ NEW: Region and generation information
  */
-Future<Map<String, dynamic>?> fetchPokemon(int id, GraphQLClient client) async {
+Future<Pokemon?> fetchPokemon(int id, GraphQLClient client) async {
   final query = '''
     query GetPokemonById {
       pokemon_v2_pokemon(where: {id: {_eq: $id}}) {
@@ -107,14 +111,19 @@ Future<Map<String, dynamic>?> fetchPokemon(int id, GraphQLClient client) async {
   ''';
 
   final result = await client.query(QueryOptions(document: gql(query)));
-  final species = result.data?['pokemon_v2_pokemon'];
-  return (species != null && species.isNotEmpty) ? species[0] : null;
+  final pokemon_raw = result.data?['pokemon_v2_pokemon'];
+
+  if (pokemon_raw != null && pokemon_raw.isNotEmpty) {
+    final dto = PokemonDTO.fromGraphQL(pokemon_raw[0]);
+    return PokemonMapper.toDomain(dto);
+  }
+  return null;
 }
 
 /**
  * FETCH POKEMON LIST - Get paginated list with filters
  */
-Future<List<Map<String, dynamic>>> fetchPokemonList(
+Future<List<PokemonListItem>> fetchPokemonList(
   GraphQLClient client,
   String? selectedType,
   int? selectedGeneration,
@@ -181,14 +190,18 @@ Future<List<Map<String, dynamic>>> fetchPokemonList(
   ''';
 
   final result = await client.query(QueryOptions(document: gql(query)));
-  final pokemons = result.data?['pokemon_v2_pokemon'] as List<dynamic>?;
-  return pokemons?.cast<Map<String, dynamic>>() ?? [];
+  final pokemons = result.data?['pokemon_v2_pokemon'] as List<dynamic>? ?? [];
+
+  // Return the list directly
+  return pokemons
+      .map((p) => PokemonListItem.fromGraphQL(p as Map<String, dynamic>))
+      .toList();
 }
 
 /**
  * SEARCH POKEMON BY NAME - Returns list of matching Pokémon
  */
-Future<List<Map<String, dynamic>>> searchPokemonByName(String name, GraphQLClient client, int counter) async {
+Future<List<PokemonListItem>> searchPokemonByName(String name, GraphQLClient client, int counter) async {
 
   final offset = (counter - 1) * 50;
   final query = '''
@@ -209,17 +222,106 @@ Future<List<Map<String, dynamic>>> searchPokemonByName(String name, GraphQLClien
   ''';
 
   final result = await client.query(QueryOptions(document: gql(query)));
-  final pokemons = result.data?['pokemon_v2_pokemon'] as List<dynamic>?;
-  return pokemons?.cast<Map<String, dynamic>>() ?? [];
+  final pokemons = result.data?['pokemon_v2_pokemon'] as List<dynamic>? ?? [];
+
+  return pokemons
+      .take(50) // Take only 50, use length > 50 to determine hasMore in bloc
+      .map((p) => PokemonListItem.fromGraphQL(p as Map<String, dynamic>))
+      .toList();
 }
 
 /**
  * SEARCH SINGLE POKEMON BY NAME - Returns first matching Pokémon
  */
-Future<Map<String, dynamic>?> searchSinglePokemonByName(String name, GraphQLClient client) async {
+Future<PokemonListItem?> searchSinglePokemonByName(String name, GraphQLClient client) async {
   final results = await searchPokemonByName(name, client, 1);
   return results.isNotEmpty ? results.first : null;
 }
+
+
+/**
+ * SEARCH SINGLE POKEMON BY NAME (FULL DATA) - Returns first matching Pokémon with complete details
+ * Used in detail page search functionality
+ */
+Future<Pokemon?> searchPokemonByNameFull(String name, GraphQLClient client) async {
+  final query = '''
+    query SearchPokemonByName {
+      pokemon_v2_pokemon(
+        where: {name: {_ilike: "%$name%"}},
+        limit: 1
+      ) {
+        id
+        name
+        height
+        weight
+        pokemon_v2_pokemontypes {
+          pokemon_v2_type {
+            name
+          }
+        }
+        pokemon_v2_pokemonstats {
+          base_stat
+          pokemon_v2_stat {
+            name
+          }
+        }
+        pokemon_v2_pokemonabilities {
+          is_hidden
+          pokemon_v2_ability {
+            name
+          }
+        }
+        pokemon_v2_pokemonmoves {
+          level
+          pokemon_v2_move {
+            name
+            power
+            accuracy
+            pp
+            pokemon_v2_type {
+              name
+            }
+          }
+        }
+        pokemon_v2_pokemonspecy {
+          id
+          gender_rate
+          generation_id
+          pokemon_v2_pokemonegggroups {
+            pokemon_v2_egggroup {
+              name
+            }
+          }
+          pokemon_v2_pokemonspeciesflavortexts(
+            where: {language_id: {_eq: 9}},
+            order_by: {version_id: desc},
+            limit: 1
+          ) {
+            flavor_text
+          }
+          pokemon_v2_generation {
+            name
+            pokemon_v2_region {
+              name
+            }
+          }
+        }
+      }
+    }
+  ''';
+
+  final result = await client.query(QueryOptions(document: gql(query)));
+  final pokemon = result.data?['pokemon_v2_pokemon'] as List<dynamic>? ?? [];
+
+  if (pokemon.isNotEmpty) {
+    final dto = PokemonDTO.fromGraphQL(pokemon[0] as Map<String, dynamic>);
+    return PokemonMapper.toDomain(dto);
+  }
+  return null;
+}
+
+
+
 
 /**
  * FETCH EVOLUTION CHAIN - Get evolution data for a species

@@ -253,12 +253,12 @@ class DetailPageState extends State<PokeDetailPage> {
             child: Center(
               // Use FutureBuilder to fetch and display Pokémon data
               // SMART SWITCHING: Uses search when query exists, otherwise uses ID counter
-              child: FutureBuilder<Map<String, dynamic>?>(
+              child: FutureBuilder<Pokemon?>(
                 // Conditional future: if search query is empty, fetch by ID
                 // Otherwise, search by name with debounced query
                 future: _searchQuery.isEmpty
                     ? fetchPokemon(_counter, client) // Fetch by ID (navigation mode)
-                    : searchSinglePokemonByName(_searchQuery, client), // Search by name (search mode)
+                    : searchPokemonByNameFull(_searchQuery, client), // Search by name (search mode)
                 builder: (context, snapshot) {
                   // Show loading indicator while waiting for data
                   if (snapshot.connectionState == ConnectionState.waiting) {
@@ -279,7 +279,7 @@ class DetailPageState extends State<PokeDetailPage> {
 
 
                   // Get the Pokémon data from the snapshot
-                  final pokemon = Pokemon.fromGraphQL(snapshot.data!);
+                  final pokemon = snapshot.data!;
 
                   // Display the Pokémon ID and name
                   return SingleChildScrollView(

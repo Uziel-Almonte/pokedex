@@ -5,6 +5,7 @@ import 'package:google_fonts/google_fonts.dart';
 
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:hive_flutter/hive_flutter.dart';
+import 'package:pokedex/data/dtos/pokemon_list_dto.dart';
 import '../theme_provider.dart';
 import 'package:provider/provider.dart';
 import '../page_necessities/home_page/PokeSelect.dart';
@@ -16,6 +17,9 @@ import '/presentation/page_necessities/home_page/showFilterDialog.dart' as show_
 import 'PokemonQuizPage.dart';
 import 'FavoritesPage.dart';
 import '/data/favorites_service.dart';
+
+import '/domain/models/Pokemon.dart';
+import '/data/dtos/pokemon_dto.dart';
 
 
 
@@ -416,12 +420,8 @@ class HomePageState extends State<home_page.PokeHomePage> {
                 );
               }
 
-              final pokemon = state.pokemonList[index];
-              final types = (pokemon['pokemon_v2_pokemontypes'] as List<dynamic>?)
-                  ?.map((t) => t['pokemon_v2_type']?['name'] as String?)
-                  .whereType<String>()
-                  .join(', ') ??
-                  'Unknown';
+              final PokemonListItem pokemon = state.pokemonList[index];
+              final types = pokemon.typesString;
 
               return PokeSelect(
                 pokemon: pokemon,
@@ -436,7 +436,7 @@ class HomePageState extends State<home_page.PokeHomePage> {
                       builder: (context) =>
                           main_page.PokeDetailPage(
                             title: 'Pokedex',
-                            initialPokemonId: pokemon['id'] as int,
+                            initialPokemonId: pokemon.id,
                           ),
                     ),
                   );

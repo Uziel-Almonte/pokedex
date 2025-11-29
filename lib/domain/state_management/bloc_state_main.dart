@@ -73,8 +73,6 @@ class DetailBloc extends Bloc<DetailEvent, DetailState> {
 
   DetailBloc({required this.client}) : super(DetailInitial()) {
     on<LoadPokemonDetail>(_onLoadPokemonDetail);
-    on<SearchPokemonDetail>(_onSearchPokemonDetail);
-    on<IncrementDetailPokemonId>(_onIncrementPokemonId);
   }
 
   Future<void> _onLoadPokemonDetail(
@@ -85,7 +83,7 @@ class DetailBloc extends Bloc<DetailEvent, DetailState> {
     try {
       final pokemonData = await fetchPokemon(event.pokemonId, client);
       if (pokemonData != null) {
-        final pokemon = Pokemon.fromGraphQL(pokemonData);
+        final pokemon = pokemonData;
         emit(DetailLoaded(
           pokemon: pokemon,
           currentPokemonId: event.pokemonId,
@@ -95,46 +93,6 @@ class DetailBloc extends Bloc<DetailEvent, DetailState> {
       }
     } catch (e) {
       emit(DetailError(e.toString()));
-    }
-  }
-
-  Future<void> _onSearchPokemonDetail(
-      SearchPokemonDetail event,
-      Emitter<DetailState> emit,
-      ) async {
-    if (event.query.isEmpty) {
-      final currentState = state;
-      if (currentState is DetailLoaded) {
-        add(LoadPokemonDetail(currentState.currentPokemonId));
-      }
-      return;
-    }
-
-    emit(DetailLoading());
-    try {
-      final pokemonData = await searchSinglePokemonByName(event.query, client);
-      if (pokemonData != null) {
-        final pokemon = Pokemon.fromGraphQL(pokemonData);
-        emit(DetailLoaded(
-          pokemon: pokemon,
-          currentPokemonId: pokemon.id,
-          searchQuery: event.query,
-        ));
-      } else {
-        emit(const DetailError('Pokemon not found'));
-      }
-    } catch (e) {
-      emit(DetailError(e.toString()));
-    }
-  }
-
-  void _onIncrementPokemonId(
-      IncrementDetailPokemonId event,
-      Emitter<DetailState> emit,
-      ) {
-    final currentState = state;
-    if (currentState is DetailLoaded) {
-      add(LoadPokemonDetail(currentState.currentPokemonId + 1));
     }
   }
 }
