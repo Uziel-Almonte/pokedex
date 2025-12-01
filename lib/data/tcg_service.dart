@@ -294,7 +294,7 @@ class TCGService {
         final hasMore = offset + limit < allCards.length || !(_searchComplete[cacheKey] ?? false);
         final isComplete = _searchComplete[cacheKey] ?? false;
 
-        print('📦 Cache: ${paginatedCards.length} cards (offset: $offset, total: ${allCards.length}, complete: $isComplete)');
+        print(' Cache: ${paginatedCards.length} cards (offset: $offset, total: ${allCards.length}, complete: $isComplete)');
 
         return {
           'cards': paginatedCards,
@@ -305,7 +305,7 @@ class TCGService {
       }
 
       // FIRST TIME - Quick initial search for first 3 cards
-      print('🔍 First fetch for "$pokemonName" - finding first $limit cards quickly...');
+      print(' First fetch for "$pokemonName" - finding first $limit cards quickly...');
 
       final setsUrl = Uri.parse('$_baseUrl/sets');
       final setsResponse = await http.get(setsUrl);
@@ -380,7 +380,7 @@ class TCGService {
       _cardsCache[cacheKey] = quickCards;
       _searchComplete[cacheKey] = true;
 
-      print('✅ Search complete! Found ${quickCards.length} total cards (all sets searched)');
+      print(' Search complete! Found ${quickCards.length} total cards (all sets searched)');
 
       if (onBackgroundComplete != null) {
         onBackgroundComplete(quickCards.length);
@@ -421,7 +421,7 @@ class TCGService {
     final searchName = pokemonName.toLowerCase();
 
     try {
-      print('🔄 Background search started from set $startIndex/${allSets.length}...');
+      print(' Background search started from set $startIndex/${allSets.length}...');
 
       // Continue from where quick search left off
       for (int i = startIndex; i < allSets.length; i++) {
@@ -464,7 +464,7 @@ class TCGService {
       _searchComplete[cacheKey] = true;
       final totalFound = _cardsCache[cacheKey]?.length ?? alreadyFound;
 
-      print('✅ Background search complete! Found ${totalFound} total cards for "$pokemonName"');
+      print(' Background search complete! Found ${totalFound} total cards for "$pokemonName"');
 
       if (onComplete != null) {
         onComplete(totalFound);
