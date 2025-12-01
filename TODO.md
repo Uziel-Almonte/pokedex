@@ -52,7 +52,7 @@ O - Mostrar peso, altura y egg groups.
 
 X - Variantes/formas (dropdown → Alola, Galar, etc.).
 
-X - Botón Shiny toggle (si existen assets).
+O - Botón Shiny toggle (si existen assets).
 
 2. Uso de GraphQL — 10 %
 

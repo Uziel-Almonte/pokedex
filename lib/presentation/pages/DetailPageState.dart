@@ -101,6 +101,14 @@ class DetailPageState extends State<PokeDetailPage> {
   /// When filled, searches for Pokémon by name.
   String _searchQuery = '';
 
+  /// Toggle state for showing shiny sprite
+  ///
+  /// When true, displays the shiny (alternate color) version of the Pokémon.
+  /// When false, displays the normal version.
+  /// The shiny sprites are fetched from the same PokeAPI sprites repository
+  /// but from the 'shiny' subfolder instead of the normal one.
+  bool _isShiny = false;
+
   /// Gradient list for UI styling (currently unused, can be removed)
   final gradientList = <List<Color>>[
     [
@@ -305,9 +313,105 @@ class DetailPageState extends State<PokeDetailPage> {
                                 ],
                               ),
                               child: Image.network(
-                                'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon.id}.png',
+                                // ========================================================
+                                // 🌟 DYNAMIC SPRITE URL - NORMAL vs SHINY
+                                // ========================================================
+                                //
+                                // URL changes based on _isShiny state variable:
+                                // - Normal: .../official-artwork/{id}.png
+                                // - Shiny: .../official-artwork/shiny/{id}.png
+                                //
+                                // The PokeAPI sprites repository provides both versions
+                                // for all Pokémon. Shiny sprites have alternate colors
+                                // and are highly sought after by collectors!
+                                _isShiny
+                                    ? 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/shiny/${pokemon.id}.png'
+                                    : 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/${pokemon.id}.png',
                                 height: 150, // Set image height to 150 pixels
                                 width: 150, // Set image width to 150 pixels (square image)
+                              ),
+                            ),
+                            // ========================================================
+                            // 🌟 SHINY TOGGLE BUTTON - SPARKLE ICON OVERLAY
+                            // ========================================================
+                            //
+                            // Allows users to toggle between normal and shiny sprites!
+                            // Positioned on top-left of Pokémon image.
+                            //
+                            // WHAT IS SHINY:
+                            // - Shiny Pokémon are rare alternate color variants
+                            // - In games, they have a 1/4096 chance of appearing
+                            // - They're highly prized by collectors
+                            // - Same stats, just different colors
+                            //
+                            // VISUAL STATES:
+                            // - Active (shiny): Gold sparkles icon
+                            // - Inactive (normal): Grey stars outline icon
+                            //
+                            // USER INTERACTION:
+                            // 1. User taps sparkle icon
+                            // 2. _isShiny boolean toggles
+                            // 3. setState() rebuilds the widget
+                            // 4. Image URL changes to shiny/normal version
+                            // 5. SnackBar shows confirmation
+                            //
+                            // DESIGN:
+                            // - White circular background (90% opacity)
+                            // - Subtle shadow for depth
+                            // - 28px icon size for easy tapping
+                            // - Positioned 8px from top and left edges
+                            //
+                            Positioned(
+                              top: 8,
+                              left: 8,
+                              child: Container(
+                                // White circular background for visibility over any image
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.9),
+                                  shape: BoxShape.circle,
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: Colors.black.withOpacity(0.2),
+                                      blurRadius: 4,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                child: IconButton(
+                                  // Dynamic icon based on shiny status
+                                  // sparkles = shiny active (gold color)
+                                  // stars_outlined = normal (grey color)
+                                  icon: Icon(
+                                    _isShiny ? Icons.auto_awesome : Icons.stars_outlined,
+                                    color: _isShiny ? Colors.amber[600] : Colors.grey[600],
+                                    size: 28,
+                                  ),
+                                  onPressed: () {
+                                    // Toggle shiny state
+                                    setState(() {
+                                      _isShiny = !_isShiny;
+                                    });
+
+                                    // Show confirmation SnackBar
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(context).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            _isShiny
+                                                ? ' Shiny ${pokemon.name.toUpperCase()} appeared!'
+                                                : 'Showing normal ${pokemon.name.toUpperCase()}',
+                                            style: GoogleFonts.pressStart2p(fontSize: 10),
+                                          ),
+                                          duration: const Duration(seconds: 2),
+                                          // Gold for shiny, blue for normal
+                                          backgroundColor: _isShiny
+                                              ? Colors.amber[700]
+                                              : Colors.blue[700],
+                                        ),
+                                      );
+                                    }
+                                  },
+                                ),
                               ),
                             ),
                             // ========================================================
