@@ -50,6 +50,7 @@ import '../page_necessities/detail_page/EvolutionChainCard.dart' as evolutions_c
 import '../page_necessities/detail_page/StatsCard.dart' as stats_card;
 import '../page_necessities/detail_page/PhysicalStatsCard.dart' as physical_stats_card;
 import '../page_necessities/detail_page/PokedexEntryCard.dart' as pokedex_entry_card;
+import '../page_necessities/detail_page/TypeMatchupsCard.dart';
 
 /// ============================================================================
 /// DETAIL PAGE STATE CLASS
@@ -314,7 +315,7 @@ class DetailPageState extends State<PokeDetailPage> {
                               ),
                               child: Image.network(
                                 // ========================================================
-                                // 🌟 DYNAMIC SPRITE URL - NORMAL vs SHINY
+                                // DYNAMIC SPRITE URL - NORMAL vs SHINY
                                 // ========================================================
                                 //
                                 // URL changes based on _isShiny state variable:
@@ -332,7 +333,7 @@ class DetailPageState extends State<PokeDetailPage> {
                               ),
                             ),
                             // ========================================================
-                            // 🌟 SHINY TOGGLE BUTTON - SPARKLE ICON OVERLAY
+                            // SHINY TOGGLE BUTTON - SPARKLE ICON OVERLAY
                             // ========================================================
                             //
                             // Allows users to toggle between normal and shiny sprites!
@@ -415,7 +416,7 @@ class DetailPageState extends State<PokeDetailPage> {
                               ),
                             ),
                             // ========================================================
-                            // ❤️ FAVORITE BUTTON - HEART ICON OVERLAY
+                            //  FAVORITE BUTTON - HEART ICON OVERLAY
                             // ========================================================
                             //
                             // This is the main favorites feature UI component!
@@ -427,8 +428,8 @@ class DetailPageState extends State<PokeDetailPage> {
                             // - Works across all pages (home, detail, favorites)
                             //
                             // VISUAL STATES:
-                            // - Filled red heart (❤️): Currently favorited
-                            // - Outlined grey heart (🤍): Not favorited
+                            // - Filled red heart (): Currently favorited
+                            // - Outlined grey heart (): Not favorited
                             //
                             // USER INTERACTION:
                             // 1. User taps heart icon
@@ -570,6 +571,31 @@ class DetailPageState extends State<PokeDetailPage> {
                             totalStats: pokemon.totalStats,
                             isDarkMode: isDarkMode,
                           ),
+                        ),
+
+                        // TYPE MATCHUPS SECTION
+                        // ========================================================
+                        //  DEFENSIVE TYPE EFFECTIVENESS DISPLAY
+                        // ========================================================
+                        //
+                        // Shows how this Pokémon's type combination affects
+                        // damage taken from different attacking types.
+                        //
+                        // CATEGORIES DISPLAYED:
+                        // - WEAKNESSES: Types that deal 2x or 4x damage (red)
+                        // - RESISTANCES: Types that deal 0.5x or 0.25x damage (green)
+                        // - IMMUNITIES: Types that deal 0x damage (blue)
+                        //
+                        // EXAMPLES:
+                        // - Charizard (Fire/Flying): x4 weak to Rock, immune to Ground
+                        // - Magnezone (Electric/Steel): x4 weak to Ground, many resistances
+                        // - Spiritomb (Ghost/Dark): No weaknesses (before Fairy type existed)
+                        //
+                        // This helps players understand battle strategy and team building.
+                        const SizedBox(height: 20),
+                        TypeMatchupsCard(
+                          types: pokemon.types,
+                          isDarkMode: isDarkMode,
                         ),
 
                         // TRADING CARDS BUTTON

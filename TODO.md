@@ -46,7 +46,7 @@ I - Acciones: Favorito, Compartir, Abrir en mapa/regiones (si aplica).
 
 O - Favorito persiste en < 150 ms y se refleja al volver a la lista.
 
-X - Mostrar matchups (debilidades, resistencias, inmunidades x4–x0).
+O - Mostrar matchups (debilidades, resistencias, inmunidades x4–x0).
 
 O - Mostrar peso, altura y egg groups.
 
