@@ -16,11 +16,11 @@ O - Mostrar nombre, imagen, tipo(s) y número (#dex).
 
 O - Implementar barra de búsqueda con debounce (300–500 ms).
 
-I - Diseño moderno, accesible y responsivo (Material 3).
+O - Diseño moderno, accesible y responsivo (Material 3).
 
 O - Aplicar temas dinámicos (oscuro/claro).
 
-X - Pantalla de error con mensaje y botón "Reintentar".
+I - Pantalla de error con mensaje y botón "Reintentar".
 
 Pantalla de Detalles
 
@@ -40,11 +40,11 @@ O - Si no evoluciona, mostrar mensaje "No evoluciona".
 
 O - Mostrar movimientos filtrables por método (level-up) agrupados por nivel.
 
-I - Paginación local (≥ 20 sin lag).
+O - Paginación local (≥ 20 sin lag).
 
-X - Acciones: Favorito, Compartir, Abrir en mapa/regiones (si aplica).
+I - Acciones: Favorito, Compartir, Abrir en mapa/regiones (si aplica).
 
-X - Favorito persiste en < 150 ms y se refleja al volver a la lista.
+O - Favorito persiste en < 150 ms y se refleja al volver a la lista.
 
 X - Mostrar matchups (debilidades, resistencias, inmunidades x4–x0).
 
@@ -58,7 +58,7 @@ X - Botón Shiny toggle (si existen assets).
 
 O - Integrar API GraphQL de PokeAPI.
 
-I - Implementar paginación basada en cursor (actualmente usa offset).
+O - Implementar paginación basada en cursor (actualmente usa offset).
 
 O - Agregar cache local (Hive integrado con graphql_flutter).
 
@@ -78,7 +78,7 @@ O - Filtrar Pokémon por nombre con búsqueda debounced.
 
 O - Agregar dropdown de filtros: tipo, generación, y habilidad implementados.
 
-I - Ordenar por nombre, número o poder (actualmente solo orden ascendente/descendente por ID).
+O - Ordenar por nombre, número o poder (actualmente solo orden ascendente/descendente por ID).
 
 X - Mantener filtros activos entre sesiones.
 
@@ -94,7 +94,7 @@ O - Habilitar modo offline para favoritos y último listado visto.
 
 X - Implementar animaciones Hero, microinteracciones y transiciones suaves.
 
-X - Animar al agregar/quitar favoritos o cambiar de vista.
+O - Animar al agregar/quitar favoritos o cambiar de vista.
 
 7. Compartir Pokémon — 5 %
 
@@ -104,13 +104,13 @@ X - Compartir tarjeta como imagen exportable.
 
 8. Mapa Interactivo — 5 %
 
-X - Mostrar regiones/juegos donde aparece cada Pokémon.
+O - Mostrar regiones/juegos donde aparece cada Pokémon.
 
 X - Usar mapas interactivos (flutter_map, leaflet o similar).
 
 9. Accesibilidad e Internacionalización — 5 %
 
-X - Agregar etiquetas Semantics y tamaños táctiles adecuados.
+O - Agregar etiquetas Semantics y tamaños táctiles adecuados.
 
 X - Implementar soporte multilenguaje (español/inglés, mínimo en trivia).
 
@@ -118,11 +118,11 @@ X - Implementar soporte multilenguaje (español/inglés, mínimo en trivia).
 
 O - Mostrar silueta del Pokémon y pedir nombre.
 
-X - Sistema de puntuación y tiempo límite.
+O - Sistema de puntuación y tiempo límite.
 
 X - Ranking local y persistencia de resultados.
 
-X - Desbloquear logros visuales al alcanzar puntajes altos.
+O - Desbloquear logros visuales al alcanzar puntajes altos.
 
 
 ## Características Adicionales Implementadas
