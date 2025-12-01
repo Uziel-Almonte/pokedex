@@ -29,6 +29,7 @@ class PokemonMapper {
     // Convertir moves a formato Map<String, dynamic>
     final moves = dto.moves.map((m) => {
       'level': m.level,
+      'method': m.learnMethod ?? 'other',
       'pokemon_v2_move': {
         'name': m.name,
         'power': m.power,

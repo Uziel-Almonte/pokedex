@@ -51,6 +51,9 @@ Future<Pokemon?> fetchPokemon(int id, GraphQLClient client) async {
         }
         pokemon_v2_pokemonmoves(order_by: {level: asc}) {
           level
+          pokemon_v2_movelearnmethod { 
+            name
+          }
           pokemon_v2_move {
             name
             power
@@ -273,6 +276,9 @@ Future<Pokemon?> searchPokemonByNameFull(String name, GraphQLClient client) asyn
         }
         pokemon_v2_pokemonmoves {
           level
+          pokemon_v2_movelearnmethod {  
+            name
+          }
           pokemon_v2_move {
             name
             power

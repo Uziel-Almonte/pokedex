@@ -102,6 +102,7 @@ class PokemonMoveDTO {
   final int? accuracy;
   final int? pp;
   final String? type;
+  final String? learnMethod;
 
   const PokemonMoveDTO({
     required this.name,
@@ -110,6 +111,7 @@ class PokemonMoveDTO {
     this.accuracy,
     this.pp,
     this.type,
+    this.learnMethod,
   });
 
   factory PokemonMoveDTO.fromGraphQL(Map<String, dynamic> json) {
@@ -121,6 +123,7 @@ class PokemonMoveDTO {
       accuracy: move?['accuracy'] as int?,
       pp: move?['pp'] as int?,
       type: move?['pokemon_v2_type']?['name'] as String?,
+      learnMethod: json['pokemon_v2_movelearnmethod']?['name'] as String?,
     );
   }
 }
