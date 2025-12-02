@@ -233,6 +233,7 @@ class _MovesCardState extends State<MovesCard> {
     final move = moveData['move'] as Map<String, dynamic>;
     final method = moveData['method'] as String;
 
+
     return ListTile(
       dense: true,
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
@@ -339,6 +340,7 @@ class _MovesCardState extends State<MovesCard> {
           'level': level,
           'method': method,
           'move': move,
+          'name': moveName,
         });
       }
     }
@@ -361,12 +363,10 @@ class _MovesCardState extends State<MovesCard> {
         final levelA = a['level'] as int;
         final levelB = b['level'] as int;
         if (levelA != levelB) return levelA.compareTo(levelB);
-        return (a['move']['name'] as String).compareTo(b['move']['name'] as String);
+        return (a['name'] as String).compareTo(b['name'] as String);
       });
     } else {
-      filtered.sort((a, b) =>
-          (a['move']['name'] as String).compareTo(b['move']['name'] as String)
-      );
+      filtered.sort((a, b) => (a['name'] as String).compareTo(b['name'] as String));
     }
 
     return filtered;
