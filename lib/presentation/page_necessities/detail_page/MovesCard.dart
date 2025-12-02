@@ -16,6 +16,9 @@ class _MovesCardState extends State<MovesCard> {
   String _selectedMethod = 'All';
   String _sortBy = 'level'; // 'level' or 'name'
 
+  // Keeps track of expanded sections to avoid rebuilding
+  final Map<String, bool> expandedSections = {};
+
   @override
   Widget build(BuildContext context) {
     if (widget.moves == null || widget.moves!.isEmpty) {
@@ -162,24 +165,47 @@ class _MovesCardState extends State<MovesCard> {
     );
   }
 
-  //// Builds a group section (level or letter)
   Widget _buildGroupSection(String key, List<Map<String, dynamic>> groupMoves) {
+    final isLevelSort = _sortBy == 'level';
+
+    // Parse key safely
+    final keyParts = key.split('-');
+    final levelNum = int.tryParse(keyParts[0]) ?? 0;
+
+    // Determine display text
+    String displayKey;
+    if (isLevelSort) {
+      if (levelNum == 0) {
+        final method = keyParts.length > 1 ? keyParts[1] : 'other';
+        displayKey = method == 'egg' ? 'Egg' : method == 'tutor' ? 'Tutor' : 'TM/HM';
+      } else {
+        displayKey = 'Lv. $levelNum';
+      }
+    } else {
+      displayKey = key.toUpperCase();
+    }
+
     return ExpansionTile(
       tilePadding: const EdgeInsets.symmetric(horizontal: 8),
+      key: PageStorageKey(key), // Mantiene estado de expansión
+      initiallyExpanded: expandedSections[key] ?? false,
+      onExpansionChanged: (isExpanded) {
+        setState(() {
+          expandedSections[key] = isExpanded;
+        });
+      },
       title: Row(
         children: [
           Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
             decoration: BoxDecoration(
               color: _sortBy == 'level'
-                  ? _getLevelColor(int.tryParse(key) ?? 0)
+                  ? _getLevelColor(levelNum)
                   : Colors.blue[700],
               borderRadius: BorderRadius.circular(12),
             ),
             child: Text(
-              _sortBy == 'level'
-                  ? (int.parse(key) == 0 ? 'Base' : 'Lv. $key')
-                  : key, // Show letter when sorted by name
+              displayKey,
               style: GoogleFonts.roboto(
                 fontSize: 12,
                 color: Colors.white,
@@ -194,6 +220,8 @@ class _MovesCardState extends State<MovesCard> {
           ),
         ],
       ),
+      // CHILDREN SE CONSTRUYEN SOLO CUANDO SE NECESITAN
+      // Flutter automáticamente hace lazy loading de los children del ExpansionTile
       children: groupMoves.map((moveData) {
         return _buildMoveListTile(moveData);
       }).toList(),
@@ -345,29 +373,47 @@ class _MovesCardState extends State<MovesCard> {
   }
 
   /// Groups moves by level or by first letter (depending on sort mode)
+  /// Groups moves by level or by first letter (depending on sort mode)
   Map<String, List<Map<String, dynamic>>> _groupMovesByKey(List<Map<String, dynamic>> moves) {
-    final grouped = <String, List<Map<String, dynamic>>>{};
+    final Map<String, List<Map<String, dynamic>>> grouped = {};
 
-    if (_sortBy == 'level') {
-      // Group by level
-      for (var moveData in moves) {
-        final level = moveData['level'] as int;
-        final key = level.toString();
-        grouped.putIfAbsent(key, () => []).add(moveData);
+    for (var move in moves) {
+      String key;
+
+      if (_sortBy == 'level') {
+        final level = move['level'] as int;
+        final method = move['method'] as String;
+        // Create composite key: "level-method"
+        key = '$level-$method';
+      } else {
+        // Group by first letter for alphabetical sorting
+        key = move['name'].toString()[0].toUpperCase();
       }
-    } else {
-      // Group by first letter when sorting by name
-      for (var moveData in moves) {
-        final moveName = moveData['move']['name'] as String;
-        final key = moveName[0].toUpperCase();
-        grouped.putIfAbsent(key, () => []).add(moveData);
-      }
+
+      grouped.putIfAbsent(key, () => []).add(move);
     }
 
+    // Sort the groups
     return Map.fromEntries(
-        grouped.entries.toList()..sort((a, b) => a.key.compareTo(b.key))
+        grouped.entries.toList()..sort((a, b) {
+          if (_sortBy == 'level') {
+            // Extract level numbers from composite keys for numeric comparison
+            final aLevel = int.parse(a.key.split('-')[0]);
+            final bLevel = int.parse(b.key.split('-')[0]);
+
+            // First sort by level numerically
+            final levelCompare = aLevel.compareTo(bLevel);
+            if (levelCompare != 0) return levelCompare;
+
+            // If same level, sort by method alphabetically
+            return a.key.compareTo(b.key);
+          }
+          // Alphabetical sorting by letter
+          return a.key.compareTo(b.key);
+        })
     );
   }
+
 
   /// Gets available methods
   List<String> _getAvailableMethods(List<Map<String, dynamic>> moves) {
@@ -402,20 +448,6 @@ class _MovesCardState extends State<MovesCard> {
     if (level <= 40) return Colors.blue;
     if (level <= 60) return Colors.orange;
     return Colors.red;
-  }
-
-  /// Gets label for level
-  String _getLevelLabel(Map<String, dynamic> moveData) {
-    final level = moveData['level'] as int;
-    final method = moveData['method'] as String;
-
-    // Show method name for non-level-up moves
-    if (method == 'machine') return 'TM/HM';
-    if (method == 'egg') return 'Egg Move';
-    if (method == 'tutor') return 'Move Tutor';
-
-    // Show level for level-up moves
-    return level == 0 ? 'Base' : 'Lv. $level';
   }
 
   /// Gets color for method

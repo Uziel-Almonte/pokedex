@@ -110,113 +110,84 @@ class PokeSelect extends StatelessWidget {
     );
   }
 
+
   @override
   Widget build(BuildContext context) {
-    // Extraer información del Pokémon del objeto Map
-    final pokemonName = pokemon.name ?? 'Unknown'; // Nombre del Pokémon
-    final pokemonId = pokemon.id ?? '0'; // ID del Pokémon para la imagen
-    final imageURL = 'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$pokemonId.png';
-    return GestureDetector( // Detecta toques/clics en la tarjeta
-      onTap: onTap, // Ejecuta el callback cuando se toca la tarjeta
-      child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          // ====================================================================
-          // APLICAR EL GRADIENTE DE COLOR BASADO EN EL TIPO
-          // ====================================================================
-          // En lugar de un color sólido, usamos el gradiente generado
-          // por _getTypeGradient() para dar un efecto visual único a cada tipo
-          gradient: _getTypeGradient(),
-          borderRadius: BorderRadius.circular(20), // Bordes redondeados
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.3), // Sombra oscura semi-transparente
-              spreadRadius: 3,  // Qué tan lejos se extiende la sombra
-              blurRadius: 8,    // Qué tan difusa es la sombra
-              offset: const Offset(0, 4), // Desplazamiento hacia abajo
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            // ==================================================================
-            // IMAGEN DEL POKÉMON
-            // ==================================================================
-            // Cargar imagen oficial del Pokémon desde el repositorio de sprites
-            Image.network(
-              imageURL,
-              height: 60,
-              width: 60,
-              errorBuilder: (context, error, stackTrace) {
-                return Image.network(
-                  'https://images-wixmp-ed30a86b8c4ca887773594c2.wixmp.com/i/8a5d5bc8-94fe-46e1-ac40-03969b602a62/dg4mjun-6ca3d4fd-44d1-4587-9152-7f817fa1a4c0.png/v1/fill/w_457,h_497/pokeball_recycle_bin_icon_empty_v2_by_blacklem00n_dg4mjun-fullview.png', // Use local asset as fallback
-                  height: 60,
-                  width: 60,
-                );
-              },
-            ),
-            const SizedBox(height: 20),
+    final pokemonName = pokemon.name ?? 'Unknown';
+    final pokemonId = pokemon.id ?? '0';
+    final imageURL =
+        'https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/other/official-artwork/$pokemonId.png';
 
-            // ==================================================================
-            // NÚMERO DEL POKÉMON (#001, #025, etc.)
-            // ==================================================================
-            Text(
-              '#$pokemonId',
-              style: GoogleFonts.pressStart2p(
-                fontSize: 16,
-                color: Colors.white, // Blanco para contraste con el gradiente
-                fontWeight: FontWeight.bold,
-                shadows: [
-                  Shadow(
-                    offset: const Offset(2, 2),
-                    blurRadius: 4,
-                    color: Colors.black.withOpacity(0.7), // Sombra negra para legibilidad
-                  ),
-                ],
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+      child: InkWell(
+        borderRadius: BorderRadius.circular(18),
+        onTap: onTap,
+        child: Container(
+          height: 110, // reduce vertical size here
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(18),
+            gradient: _getTypeGradient(),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                blurRadius: 6,
+                offset: const Offset(0, 3),
               ),
-            ),
-            const SizedBox(height: 10),
-
-            // ==================================================================
-            // NOMBRE DEL POKÉMON
-            // ==================================================================
-            Text(
-              pokemonName.toString().toUpperCase(),
-              style: GoogleFonts.pressStart2p(
-                fontSize: 24,
-                color: Colors.white, // Blanco sobre el gradiente de color
-                fontWeight: FontWeight.bold,
-                shadows: [
-                  Shadow(
-                    offset: const Offset(2, 2),
-                    blurRadius: 4,
-                    color: Colors.black.withOpacity(0.8), // Sombra más fuerte
-                  ),
-                ],
+            ],
+          ),
+          child: Row(
+            children: [
+              const SizedBox(width: 47),
+              // image side
+              SizedBox(
+                width: 80,
+                height: 80,
+                child: Image.network(
+                  imageURL,
+                  fit: BoxFit.contain,
+                ),
               ),
-            ),
-            const SizedBox(height: 10),
-
-            // ==================================================================
-            // TIPO(S) DEL POKÉMON
-            // ==================================================================
-            Text(
-              'Types: $types',
-              style: GoogleFonts.roboto(
-                fontSize: 18,
-                color: Colors.white, // Blanco con sombra para legibilidad
-                fontWeight: FontWeight.w600,
-                shadows: [
-                  Shadow(
-                    offset: const Offset(1, 1),
-                    blurRadius: 3,
-                    color: Colors.black.withOpacity(0.6),
-                  ),
-                ],
+              const SizedBox(width: 65),
+              // text side
+              Expanded(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      '#$pokemonId',
+                      style: GoogleFonts.pressStart2p(
+                        fontSize: 20,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      pokemonName.toUpperCase(),
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.pressStart2p(
+                        fontSize: 15,
+                        color: Colors.white,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      'Types: $types',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.roboto(
+                        fontSize: 13,
+                        color: Colors.white70,
+                      ),
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+              const SizedBox(width: 12),
+            ],
+          ),
         ),
       ),
     );
