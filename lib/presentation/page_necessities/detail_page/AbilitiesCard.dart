@@ -68,6 +68,7 @@ class AbilitiesCard extends StatelessWidget {
                               style: GoogleFonts.roboto(
                                 fontSize: 14,
                                 fontWeight: FontWeight.bold,
+                                color: isDarkMode ? Colors.white : Colors.black
                               ),
                             ),
                             if (isHidden) ...[
