@@ -50,7 +50,7 @@ O - Mostrar matchups (debilidades, resistencias, inmunidades x4–x0).
 
 O - Mostrar peso, altura y egg groups.
 
-X - Variantes/formas (dropdown → Alola, Galar, etc.).
+O - Variantes/formas (dropdown → Alola, Galar, etc.) ✅ COMPLETADO - Dropdown funcional con extracción automática de nombres de formas desde pokemon_name.
 
 O - Botón Shiny toggle (si existen assets).
 

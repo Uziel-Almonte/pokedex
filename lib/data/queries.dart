@@ -361,3 +361,212 @@ Future<Map<String, dynamic>?> fetchEvolutionChain(int speciesId, GraphQLClient c
   // returns the first element in the list (the map itself)
   return (species != null && species.isNotEmpty) ? species[0] : null;
 }
+
+/**
+ * FETCH POKEMON FORMS - Get all available forms/variants for a species
+ *
+ * This function fetches all different forms of a Pokemon (e.g., Alola, Galar, Mega, etc.)
+ * Returns a list of form names and their corresponding Pokemon IDs
+ *
+ * EXAMPLE FORMS:
+ * - Raichu: Normal, Alola
+ * - Meowth: Normal, Alola, Galar
+ * - Darmanitan: Standard, Zen, Galar-Standard, Galar-Zen
+ * - Charizard: Normal, Mega-X, Mega-Y, Gigantamax
+ *
+ * HOW IT WORKS:
+ * 1. Queries pokemon_v2_pokemonspecies by species ID
+ * 2. Gets all pokemon_v2_pokemons (each represents a different form)
+ * 3. For each pokemon, extracts form information from:
+ *    - pokemon_v2_pokemonforms.pokemon_v2_pokemonformnames (human-readable names)
+ *    - pokemon_v2_pokemonforms.form_name (internal form identifier)
+ *    - Pokemon name itself (e.g., "raichu-alola" → "Alola Form")
+ * 4. Returns list of forms with IDs and readable names
+ *
+ * FORM NAME EXTRACTION PRIORITY:
+ * Priority 1: pokemon_name from pokemon_v2_pokemonformnames (most reliable)
+ * Priority 2: Parse form_name field
+ * Priority 3: Extract from pokemon name (e.g., "raichu-alola" → "Alola Form")
+ *
+ * @param speciesId - The species ID (NOT pokemon ID, but species ID from pokemon_v2_pokemonspecy)
+ * @param client - GraphQL client for making the query
+ * @return List of maps containing: id, name, formName, isDefault, isMega
+ */
+Future<List<Map<String, dynamic>>> fetchPokemonForms(int speciesId, GraphQLClient client) async {
+  final query = '''
+    query GetPokemonForms {
+      # Query the species table to get all pokemon entries for this species
+      # IMPORTANT: We query by species_id, not pokemon_id
+      # Example: Raichu species (id=26) has 2 pokemon entries: raichu (id=26) and raichu-alola (id=10100)
+      pokemon_v2_pokemonspecies(where: {id: {_eq: $speciesId}}) {
+        
+        # Get all pokemon entries for this species, ordered by ID (default form first)
+        # Each entry in pokemon_v2_pokemons represents a different form
+        # Example for Raichu:
+        #   - Entry 1: id=26, name="raichu" (Normal form)
+        #   - Entry 2: id=10100, name="raichu-alola" (Alola form)
+        pokemon_v2_pokemons(order_by: {id: asc}) {
+          id              # Pokemon ID (used to fetch full data later)
+          name            # Pokemon name (e.g., "raichu-alola")
+          
+          # Form metadata from pokemon_v2_pokemonforms table
+          pokemon_v2_pokemonforms {
+            form_name     # Internal form identifier (e.g., "alola", "mega-x")
+            is_default    # True for the default/normal form
+            is_mega       # True for Mega evolutions
+            
+            # Human-readable form names in English (language_id: 9)
+            # This is the MOST RELIABLE source for form names
+            # Example for Alola Raichu:
+            #   name: "Raichu" (form name)
+            #   pokemon_name: "Alolan Raichu" (full readable name)
+            pokemon_v2_pokemonformnames(where: {language_id: {_eq: 9}}, limit: 1) {
+              name          # Form name only (e.g., "Alolan")
+              pokemon_name  # Full pokemon name with form (e.g., "Alolan Raichu")
+            }
+          }
+        }
+      }
+    }
+  ''';
+
+  // Execute the GraphQL query
+  final result = await client.query(QueryOptions(document: gql(query)));
+
+  // Extract species data from the query result
+  // Result structure: { pokemon_v2_pokemonspecies: [ { pokemon_v2_pokemons: [...] } ] }
+  final species = result.data?['pokemon_v2_pokemonspecies'];
+
+  // Validate that we got data back
+  // Return empty list if:
+  // - species is null (query failed)
+  // - species is empty array (species ID not found)
+  if (species == null || species.isEmpty) {
+    return [];
+  }
+
+  // Extract the list of pokemon entries (forms) for this species
+  // Each entry in this list is a different form of the same Pokemon species
+  // Example for Raichu: [raichu, raichu-alola]
+  final pokemons = species[0]['pokemon_v2_pokemons'] as List<dynamic>? ?? [];
+
+  // Transform each pokemon entry into a map with form information
+  // This mapping function extracts and formats the form name for display in the dropdown
+  return pokemons.map<Map<String, dynamic>>((pokemon) {
+    // Extract form data from the pokemon entry
+    final forms = pokemon['pokemon_v2_pokemonforms'] as List<dynamic>? ?? [];
+    final form = forms.isNotEmpty ? forms[0] : null;
+
+    // Get the pokemon's internal name (e.g., "raichu", "raichu-alola", "charizard-mega-x")
+    // This is the KEY to determining the form name
+    final pokemonName = pokemon['name'] as String;
+
+    // Initialize form attributes with defaults
+    String formName = 'Normal';  // Default display name
+    bool isDefault = form?['is_default'] ?? true;  // Is this the default/normal form?
+    bool isMega = form?['is_mega'] ?? false;  // Is this a Mega evolution?
+
+    // FORM NAME EXTRACTION LOGIC
+    // ===========================
+    // We try multiple methods to get the most accurate form name
+
+    if (form != null) {
+      // Get form metadata from the query result
+      final formNames = form['pokemon_v2_pokemonformnames'] as List<dynamic>? ?? [];
+      final rawFormName = form['form_name'] as String? ?? '';
+
+      // PRIORITY 1: Use pokemon_name from pokemon_v2_pokemonformnames
+      // ============================================================
+      // This is the MOST RELIABLE source - it's the official localized name
+      // Example: "Alolan Raichu", "Galarian Meowth", "Mega Charizard X"
+      if (formNames.isNotEmpty && formNames[0]['pokemon_name'] != null) {
+        final pokemonFormName = formNames[0]['pokemon_name'] as String;
+
+        // Only use this name if it's DIFFERENT from the base pokemon name
+        // Example: If base is "Raichu" and form is "Alolan Raichu", use "Alolan Raichu"
+        // But if both are "Raichu", skip this method (it's the normal form)
+        if (pokemonFormName.toLowerCase() != pokemonName.split('-')[0].toLowerCase()) {
+          formName = pokemonFormName;
+        }
+      }
+
+      // PRIORITY 2: Parse the form_name field
+      // ======================================
+      // If pokemon_name isn't available or is the same as base name,
+      // try to extract from the pokemon's internal name
+      // Example: "raichu-alola" → "Alola Form"
+      else if (rawFormName.isNotEmpty) {
+        // Split pokemon name by dashes to separate base name from form identifier
+        // Example: "raichu-alola" → ["raichu", "alola"]
+        // Example: "charizard-mega-x" → ["charizard", "mega", "x"]
+        final nameParts = pokemonName.split('-');
+
+        if (nameParts.length > 1) {
+          // Get everything after the base pokemon name
+          // Example: ["raichu", "alola"] → "alola"
+          // Example: ["charizard", "mega", "x"] → "mega-x"
+          final formPart = nameParts.sublist(1).join('-');
+
+          // Convert to readable format with proper capitalization
+          // Example: "alola" → "Alola"
+          // Example: "mega-x" → "Mega X"
+          formName = formPart.split('-')
+              .map((word) => word[0].toUpperCase() + word.substring(1))
+              .join(' ');
+
+          // SPECIAL CASE 1: Regional variants
+          // Add "Form" suffix for regional forms (Alola, Galar, Hisui, Paldea)
+          // Example: "Alola" → "Alola Form"
+          if (['alola', 'galar', 'hisui', 'paldea'].contains(formPart.toLowerCase())) {
+            formName = '$formName Form';
+          }
+
+          // SPECIAL CASE 2: Mega evolutions
+          // Keep as is - already formatted correctly
+          // Example: "Mega X" stays as "Mega X" (no "Form" suffix)
+          else if (formPart.toLowerCase().startsWith('mega')) {
+            // Ensure "Mega" is properly formatted
+            formName = formName.replaceAll('Mega ', 'Mega ');
+            if (!formName.toLowerCase().contains('mega')) {
+              formName = 'Mega $formName';
+            }
+          }
+
+          // SPECIAL CASE 3: Gigantamax forms
+          // Convert "gmax" to user-friendly "Gigantamax"
+          // Example: "charizard-gmax" → "Gigantamax"
+          else if (formPart.toLowerCase() == 'gmax') {
+            formName = 'Gigantamax';
+          }
+        }
+      }
+
+      // FALLBACK: Extract from pokemon name if still "Normal" but not default
+      // =====================================================================
+      // If we still have "Normal" as the form name but is_default is false,
+      // it means we couldn't extract the name from pokemon_name or form_name
+      // As a last resort, try parsing the pokemon name directly
+      // Example: "deoxys-attack" → "Attack Form"
+      if (formName == 'Normal' && !isDefault) {
+        final nameParts = pokemonName.split('-');
+        if (nameParts.length > 1) {
+          // Capitalize each word and add "Form" suffix
+          formName = nameParts.sublist(1)
+              .map((word) => word[0].toUpperCase() + word.substring(1))
+              .join(' ') + ' Form';
+        }
+      }
+    }
+
+    // Return the form data as a map
+    // This map will be used in the dropdown selector UI
+    return {
+      'id': pokemon['id'] as int,        // Pokemon ID to fetch full data
+      'name': pokemonName,                // Internal pokemon name
+      'formName': formName,               // Human-readable form name for display
+      'isDefault': isDefault,             // Is this the normal/default form?
+      'isMega': isMega,                   // Is this a Mega evolution? (for special icon)
+    };
+  }).toList();
+}
+

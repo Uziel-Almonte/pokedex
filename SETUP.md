@@ -38,6 +38,9 @@ This is a comprehensive Flutter Pokédex application that allows users to browse
   - Evolution chain with sprites
   - Physical stats (height, weight, gender rate, egg groups)
   - Pokédex entry and region information
+  - **Pokemon Forms/Variants** - Dropdown selector for regional forms (Alola, Galar), Mega evolutions, and special forms
+  - **Shiny toggle** - Switch between normal and shiny sprites
+  - **Type matchups** - Shows weaknesses, resistances, and immunities
 - **Trading cards viewer** (via TCGDex API)
 - **Real-time favorite syncing** across all pages
 
@@ -157,6 +160,53 @@ lib/
   - Endpoint: `https://beta.pokeapi.co/graphql/v1beta`
 - **REST API**: TCGDex for trading cards
   - Endpoint: `https://api.tcgdex.net/v2/en`
+
+### 🔄 Pokemon Forms/Variants System
+
+#### What Are Forms?
+Pokemon can have different forms/variants such as:
+- **Regional Forms**: Alola, Galar, Hisui, Paldea variants
+- **Mega Evolutions**: Mega X, Mega Y, etc.
+- **Special Forms**: Deoxys forms, Rotom forms, etc.
+- **Gigantamax Forms**: Special G-Max variants
+
+#### How It Works
+1. **Navigate to a Pokemon** with multiple forms (e.g., Raichu, Charizard, Meowth)
+2. **Dropdown appears** below the Pokemon's types
+3. **Select a form** from the dropdown
+4. **Entire page updates** with the selected form's data:
+   - Image changes to the form's sprite
+   - Types may change (e.g., Alola Raichu is Electric/Psychic)
+   - Stats may differ
+   - Abilities may be different
+   - Height/weight may vary
+
+#### Examples:
+- **Raichu**: Normal (Electric) → Alola Form (Electric/Psychic)
+- **Meowth**: Normal → Alola Form (Dark) → Galar Form (Steel)
+- **Charizard**: Normal → Mega X (Fire/Dragon) → Mega Y (Fire/Flying)
+- **Vulpix**: Normal (Fire) → Alola Form (Ice)
+- **Deoxys**: Normal → Attack → Defense → Speed forms
+
+#### Technical Details:
+```dart
+// Forms are fetched from GraphQL:
+fetchPokemonForms(speciesId, client)
+
+// Returns list of forms with:
+{
+  'id': pokemonId,
+  'name': 'raichu-alola',
+  'formName': 'Alola Form',
+  'isDefault': false,
+  'isMega': false,
+}
+
+// Dropdown triggers rebuild with new Pokemon ID
+setState(() {
+  _selectedFormId = newFormId;
+});
+```
 
 ---
 

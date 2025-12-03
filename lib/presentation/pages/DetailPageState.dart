@@ -110,6 +110,82 @@ class DetailPageState extends State<PokeDetailPage> {
   /// but from the 'shiny' subfolder instead of the normal one.
   bool _isShiny = false;
 
+  /// Available forms/variants for the current Pokemon species
+  ///
+  /// WHAT IT STORES:
+  /// List of all available forms (e.g., Normal, Alola, Galar, Mega, etc.)
+  ///
+  /// DATA STRUCTURE:
+  /// Each form is a Map with:
+  /// - 'id' (int): Pokemon ID for this form (used to fetch full data)
+  /// - 'name' (String): Internal pokemon name (e.g., "raichu-alola")
+  /// - 'formName' (String): Human-readable name for display (e.g., "Alola Form")
+  /// - 'isDefault' (bool): Whether this is the default/normal form
+  /// - 'isMega' (bool): Whether this is a Mega evolution (for special icon)
+  ///
+  /// WHEN IT'S POPULATED:
+  /// - Populated by fetchPokemonForms() when a Pokemon is loaded
+  /// - Cleared when navigating to a different Pokemon
+  /// - Empty list means: Either no forms loaded yet, OR Pokemon has only 1 form
+  ///
+  /// EXAMPLE FOR RAICHU:
+  /// [
+  ///   {'id': 26, 'name': 'raichu', 'formName': 'Normal', 'isDefault': true, 'isMega': false},
+  ///   {'id': 10100, 'name': 'raichu-alola', 'formName': 'Alola Form', 'isDefault': false, 'isMega': false}
+  /// ]
+  List<Map<String, dynamic>> _availableForms = [];
+
+  /// Currently selected form Pokemon ID
+  ///
+  /// WHAT IT TRACKS:
+  /// The Pokemon ID of the currently displayed form variant
+  ///
+  /// VALUES:
+  /// - null: Show default form (uses _counter ID)
+  /// - Non-null: Show specific form (uses this ID instead of _counter)
+  ///
+  /// WHEN IT CHANGES:
+  /// - User selects a form from the dropdown
+  /// - Reset to null when navigating to a different Pokemon
+  /// - Reset to null when forms are loaded for a new species
+  ///
+  /// HOW IT WORKS:
+  /// The FutureBuilder uses: fetchPokemon(_selectedFormId ?? _counter, client)
+  /// This means: "Use selected form ID if available, otherwise use counter"
+  ///
+  /// EXAMPLE FLOW:
+  /// 1. User navigates to Raichu (id=26) → _selectedFormId = null → Shows Raichu #26
+  /// 2. User selects "Alola Form" → _selectedFormId = 10100 → Shows Raichu-Alola #10100
+  /// 3. User navigates to Pikachu → _selectedFormId = null → Shows Pikachu #25
+  int? _selectedFormId;
+
+  /// Track which species ID has forms loaded
+  ///
+  /// WHAT IT PREVENTS:
+  /// Infinite loop of loading forms on every rebuild
+  ///
+  /// WHY IT'S NEEDED:
+  /// Without this, every time the widget rebuilds (which happens often),
+  /// it would trigger _loadAvailableForms() again, causing:
+  /// 1. Unnecessary API calls
+  /// 2. UI flashing/flickering
+  /// 3. Potential infinite loops
+  ///
+  /// HOW IT WORKS:
+  /// - Before loading forms, check if _loadedFormsForSpeciesId == currentSpeciesId
+  /// - If yes: Skip loading (already loaded for this species)
+  /// - If no: Load forms and set _loadedFormsForSpeciesId = currentSpeciesId
+  ///
+  /// WHEN IT'S RESET:
+  /// - Set to null when navigating to a different Pokemon
+  /// - This allows forms to be loaded for the new Pokemon
+  ///
+  /// EXAMPLE:
+  /// 1. Navigate to Raichu (speciesId=26) → _loadedFormsForSpeciesId = null → Load forms → Set to 26
+  /// 2. Widget rebuilds (theme change, etc.) → _loadedFormsForSpeciesId = 26 → Skip loading
+  /// 3. Navigate to Meowth (speciesId=52) → Reset to null → Load forms → Set to 52
+  int? _loadedFormsForSpeciesId;
+
   /// Gradient list for UI styling (currently unused, can be removed)
   final gradientList = <List<Color>>[
     [
@@ -197,6 +273,134 @@ class DetailPageState extends State<PokeDetailPage> {
     });
   }
 
+  /// Load available forms for a Pokemon species
+  ///
+  /// WHAT IT DOES:
+  /// 1. Checks if forms are already loaded for this species (prevents duplicates)
+  /// 2. Fetches all available forms/variants from GraphQL API
+  /// 3. Updates _availableForms list with form data
+  /// 4. Resets _selectedFormId to show default form
+  /// 5. Marks species as loaded to prevent re-loading
+  ///
+  /// WHEN IT'S CALLED:
+  /// - After a Pokemon is successfully loaded in the FutureBuilder
+  /// - Only called once per species (tracked by _loadedFormsForSpeciesId)
+  /// - NOT called when user navigates to different Pokemon (reset happens first)
+  ///
+  /// PARAMETERS:
+  /// @param speciesId - The species ID from pokemon.speciesId
+  /// @param client - GraphQL client for making the API call
+  ///
+  /// FLOW DIAGRAM:
+  /// ```
+  /// Pokemon Loaded → Check _loadedFormsForSpeciesId
+  ///                         ↓
+  ///                  Already loaded? → YES → Return early (skip)
+  ///                         ↓ NO
+  ///                  Call fetchPokemonForms(speciesId)
+  ///                         ↓
+  ///                  Get list of forms from API
+  ///                         ↓
+  ///                  setState({
+  ///                    _availableForms = forms,
+  ///                    _selectedFormId = null,
+  ///                    _loadedFormsForSpeciesId = speciesId
+  ///                  })
+  ///                         ↓
+  ///                  Dropdown appears (if forms.length > 1)
+  /// ```
+  ///
+  /// EXAMPLE RESULTS:
+  /// For Raichu (speciesId=26):
+  ///   _availableForms = [
+  ///     {'id': 26, 'formName': 'Normal', ...},
+  ///     {'id': 10100, 'formName': 'Alola Form', ...}
+  ///   ]
+  ///
+  /// For Pikachu (speciesId=25):
+  ///   _availableForms = [
+  ///     {'id': 25, 'formName': 'Normal', ...}
+  ///   ]
+  ///   (Dropdown won't appear because length = 1)
+  ///
+  /// ERROR HANDLING:
+  /// - If forms fail to load (network error, etc.), shows default form
+  /// - Catches exceptions and sets empty list
+  /// - Still marks as loaded to prevent retry loops
+  Future<void> _loadAvailableForms(int speciesId, GraphQLClient client) async {
+    // GUARD: Only load if we haven't already loaded for this species
+    // This prevents infinite loops and unnecessary API calls
+    if (_loadedFormsForSpeciesId == speciesId) {
+      return; // Already loaded, skip
+    }
+
+    try {
+      // Fetch all available forms from GraphQL API
+      // This calls the fetchPokemonForms() function in queries.dart
+      // Returns list of maps with form data (id, name, formName, isDefault, isMega)
+      final forms = await fetchPokemonForms(speciesId, client);
+
+      // Update UI with loaded forms
+      // Only update if widget is still mounted (not disposed)
+      if (mounted) {
+        setState(() {
+          _availableForms = forms;           // Store the forms list
+          _selectedFormId = null;             // Reset to default form
+          _loadedFormsForSpeciesId = speciesId; // Mark as loaded for this species
+        });
+      }
+    } catch (e) {
+      // ERROR HANDLING: If forms fail to load, just show default form
+      // This could happen due to:
+      // - Network errors
+      // - GraphQL query errors
+      // - Invalid species ID
+      //
+      // Instead of crashing, we gracefully degrade to showing just the default form
+      if (mounted) {
+        setState(() {
+          _availableForms = [];                 // Empty list = no dropdown
+          _selectedFormId = null;               // Reset to default
+          _loadedFormsForSpeciesId = speciesId; // Mark as attempted (prevent retry loop)
+        });
+      }
+    }
+  }
+
+  /// Reset forms when navigating to a different Pokemon
+  ///
+  /// WHAT IT DOES:
+  /// Clears all form-related state to prepare for a new Pokemon
+  ///
+  /// WHEN TO CALL:
+  /// - Before navigating to a different Pokemon
+  /// - When user clicks previous/next buttons
+  /// - When user searches for a different Pokemon
+  ///
+  /// WHAT IT RESETS:
+  /// - _availableForms: Clear the forms list
+  /// - _selectedFormId: Reset to null (show default form)
+  /// - _loadedFormsForSpeciesId: Clear the tracking (allow new forms to load)
+  /// - _isShiny: Reset shiny toggle to normal
+  ///
+  /// WHY IT'S NEEDED:
+  /// Without resetting, navigating from Raichu (with forms) to Pikachu (no extra forms)
+  /// would still show Raichu's forms in the dropdown, which would be incorrect.
+  ///
+  /// USAGE:
+  /// Currently unused, but available for manual navigation reset
+  /// Could be called in navigation buttons or search handlers
+  void _resetForms() {
+    if (mounted) {
+      setState(() {
+        _availableForms = [];           // Clear forms list
+        _selectedFormId = null;         // Reset selected form
+        _loadedFormsForSpeciesId = null; // Clear loaded tracker
+        _isShiny = false;               // Reset shiny toggle
+      });
+    }
+  }
+
 
   // Build method returns the widget tree for the home page
   @override
@@ -263,10 +467,42 @@ class DetailPageState extends State<PokeDetailPage> {
               // Use FutureBuilder to fetch and display Pokémon data
               // SMART SWITCHING: Uses search when query exists, otherwise uses ID counter
               child: FutureBuilder<Pokemon?>(
-                // Conditional future: if search query is empty, fetch by ID
-                // Otherwise, search by name with debounced query
+                // ========================================================
+                // FUTURE PARAMETER - POKEMON DATA FETCHING LOGIC
+                // ========================================================
+                //
+                // This determines which Pokemon to fetch and display.
+                // It uses CONDITIONAL LOGIC to handle 3 different scenarios:
+                //
+                // SCENARIO 1: User is searching by name
+                // - Condition: _searchQuery.isEmpty == false
+                // - Action: searchPokemonByNameFull(_searchQuery, client)
+                // - Example: User types "pikachu" → Fetches Pikachu by name
+                //
+                // SCENARIO 2: User has selected a form from dropdown
+                // - Condition: _searchQuery.isEmpty == true AND _selectedFormId != null
+                // - Action: fetchPokemon(_selectedFormId, client)
+                // - Example: User selects "Alola Form" → _selectedFormId = 10100 → Fetches Alola Raichu
+                //
+                // SCENARIO 3: Normal navigation (default)
+                // - Condition: _searchQuery.isEmpty == true AND _selectedFormId == null
+                // - Action: fetchPokemon(_counter, client)
+                // - Example: User navigates to Pokemon #26 → Fetches normal Raichu
+                //
+                // THE KEY LINE: fetchPokemon(_selectedFormId ?? _counter, client)
+                // Explanation: The ?? operator means "use left if not null, otherwise use right"
+                // - If _selectedFormId is NOT null → Use _selectedFormId (selected form)
+                // - If _selectedFormId IS null → Use _counter (default form)
+                //
+                // FLOW EXAMPLE (Raichu):
+                // 1. Navigate to Raichu → _counter=26, _selectedFormId=null → Fetches #26 (Normal Raichu)
+                // 2. Forms load → Dropdown appears with "Normal" and "Alola Form"
+                // 3. User selects "Alola Form" → _selectedFormId=10100 → Triggers rebuild
+                // 4. FutureBuilder runs again → fetchPokemon(10100, client) → Fetches #10100 (Alola Raichu)
+                // 5. Page updates with Alola Raichu data (new image, types, stats, etc.)
+                //
                 future: _searchQuery.isEmpty
-                    ? fetchPokemon(_counter, client) // Fetch by ID (navigation mode)
+                    ? fetchPokemon(_selectedFormId ?? _counter, client) // Fetch by ID (navigation mode or form selection)
                     : searchPokemonByNameFull(_searchQuery, client), // Search by name (search mode)
                 builder: (context, snapshot) {
                   // Show loading indicator while waiting for data
@@ -287,8 +523,53 @@ class DetailPageState extends State<PokeDetailPage> {
                   }
 
 
+                  // ========================================================
+                  // POKEMON DATA RECEIVED - START PROCESSING
+                  // ========================================================
+
                   // Get the Pokémon data from the snapshot
                   final pokemon = snapshot.data!;
+
+                  // ========================================================
+                  // AUTO-LOAD AVAILABLE FORMS
+                  // ========================================================
+                  //
+                  // WHAT THIS DOES:
+                  // Automatically fetches all available forms for this Pokemon species
+                  // when new Pokemon data is loaded.
+                  //
+                  // WHEN THIS RUNS:
+                  // - After Pokemon data is successfully fetched
+                  // - Only runs ONCE per species (prevented by _loadedFormsForSpeciesId check)
+                  // - Runs asynchronously (doesn't block UI rendering)
+                  //
+                  // CONDITIONS:
+                  // 1. pokemon.speciesId != null
+                  //    - Ensures we have a valid species ID to query
+                  //    - Some Pokemon might not have species data
+                  //
+                  // 2. _loadedFormsForSpeciesId != pokemon.speciesId
+                  //    - Prevents loading forms multiple times for same species
+                  //    - Example: If forms already loaded for Raichu (id=26), skip
+                  //
+                  // FLOW EXAMPLE (Raichu):
+                  // 1. User navigates to Raichu → Pokemon data loads → speciesId = 26
+                  // 2. Check: _loadedFormsForSpeciesId (null) != 26? YES → Load forms
+                  // 3. _loadAvailableForms(26, client) is called asynchronously
+                  // 4. Forms load in background: [Normal, Alola Form]
+                  // 5. When forms load, setState() triggers rebuild
+                  // 6. Dropdown appears with both forms
+                  // 7. _loadedFormsForSpeciesId = 26 (prevent re-loading)
+                  // 8. User rebuilds widget (theme change) → Check: 26 != 26? NO → Skip
+                  //
+                  // WHY ASYNC?
+                  // _loadAvailableForms() is async but we don't await it here.
+                  // This allows the Pokemon to display immediately while forms load
+                  // in the background. The dropdown appears after forms finish loading.
+                  //
+                  if (pokemon.speciesId != null && _loadedFormsForSpeciesId != pokemon.speciesId) {
+                    _loadAvailableForms(pokemon.speciesId!, client);
+                  }
 
                   // Display the Pokémon ID and name
                   return SingleChildScrollView(
@@ -548,6 +829,209 @@ class DetailPageState extends State<PokeDetailPage> {
                             fontWeight: FontWeight.w600, // Use semi-bold weight (600) for moderate emphasis
                           ),
                         ),
+
+                        // ========================================================
+                        // FORMS/VARIANTS DROPDOWN SELECTOR
+                        // ========================================================
+                        //
+                        // WHAT IT DOES:
+                        // Displays a dropdown menu allowing users to switch between different
+                        // forms/variants of the same Pokemon species (e.g., Alola, Galar, Mega, etc.)
+                        //
+                        // WHEN IT APPEARS:
+                        // Only shows if _availableForms.length > 1
+                        // - If Pokemon has only 1 form (default): Dropdown hidden
+                        // - If Pokemon has multiple forms: Dropdown visible
+                        //
+                        // EXAMPLES:
+                        // - Pikachu: Only 1 form → No dropdown
+                        // - Raichu: 2 forms (Normal, Alola) → Dropdown shows
+                        // - Meowth: 3 forms (Normal, Alola, Galar) → Dropdown shows
+                        // - Charizard: 4 forms (Normal, Mega X, Mega Y, Gmax) → Dropdown shows
+                        //
+                        // HOW IT WORKS:
+                        // 1. User sees dropdown with all available forms
+                        // 2. Current form is pre-selected (highlighted)
+                        // 3. User taps dropdown → List of forms appears
+                        // 4. User selects a form → onChanged() is called
+                        // 5. setState() updates _selectedFormId
+                        // 6. FutureBuilder detects change and rebuilds
+                        // 7. New Pokemon data is fetched for selected form
+                        // 8. Entire page updates (image, stats, types, abilities, etc.)
+                        //
+                        // UI DESIGN:
+                        // - White card (light mode) or dark grey card (dark mode)
+                        // - Rounded corners (15px radius)
+                        // - Drop shadow for elevation
+                        // - Icons: ⚡ for Mega evolutions, ✨ for other forms
+                        // - Full width with padding
+                        //
+                        if (_availableForms.length > 1) ...[
+                          const SizedBox(height: 20),
+                          // Container provides styling and shadow for the dropdown
+                          Container(
+                            padding: const EdgeInsets.symmetric(horizontal: 20),
+                            decoration: BoxDecoration(
+                              color: isDarkMode ? Colors.grey[800] : Colors.white,
+                              borderRadius: BorderRadius.circular(15),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: Colors.grey.withOpacity(0.3),
+                                  spreadRadius: 2,
+                                  blurRadius: 5,
+                                  offset: const Offset(0, 2),
+                                ),
+                              ],
+                            ),
+                            // Remove the default underline from the dropdown
+                            child: DropdownButtonHideUnderline(
+                              child: DropdownButton<int>(
+                                // ========================================================
+                                // DROPDOWN VALUE - Currently selected form
+                                // ========================================================
+                                //
+                                // Uses: _selectedFormId ?? pokemon.id
+                                // - If form selected: Show that form's ID
+                                // - If no form selected (null): Show current pokemon ID (default)
+                                //
+                                // Example for Raichu:
+                                // - Initial load: _selectedFormId=null, pokemon.id=26 → Shows Normal (26)
+                                // - User selects Alola: _selectedFormId=10100 → Shows Alola Form (10100)
+                                //
+                                value: _selectedFormId ?? pokemon.id,
+
+                                // Make dropdown take full width of container
+                                isExpanded: true,
+
+                                // Dropdown arrow icon (adapts to theme)
+                                icon: Icon(
+                                  Icons.arrow_drop_down,
+                                  color: isDarkMode ? Colors.white : Colors.black,
+                                ),
+
+                                // Text style for selected item (adapts to theme)
+                                style: GoogleFonts.roboto(
+                                  fontSize: 16,
+                                  color: isDarkMode ? Colors.white : Colors.black87,
+                                  fontWeight: FontWeight.w500,
+                                ),
+
+                                // Dropdown menu background color (adapts to theme)
+                                dropdownColor: isDarkMode ? Colors.grey[800] : Colors.white,
+
+                                // ========================================================
+                                // DROPDOWN ITEMS - List of all available forms
+                                // ========================================================
+                                //
+                                // Maps each form in _availableForms to a DropdownMenuItem
+                                // Each item shows:
+                                // - Icon (⚡ for Mega, ✨ for others)
+                                // - Form name (e.g., "Normal", "Alola Form", "Mega X")
+                                //
+                                items: _availableForms.map<DropdownMenuItem<int>>((form) {
+                                  return DropdownMenuItem<int>(
+                                    // Value is the Pokemon ID for this form
+                                    // When user selects this item, onChanged receives this ID
+                                    value: form['id'] as int,
+                                    // Each dropdown item is a Row with icon + text
+                                    child: Row(
+                                      children: [
+                                        // ========================================================
+                                        // FORM ICON - Visual indicator of form type
+                                        // ========================================================
+                                        //
+                                        // MEGA EVOLUTIONS (isMega == true):
+                                        // - Icon: ⚡ electric_bolt (power/energy symbol)
+                                        // - Color: Purple (indicates special/powerful form)
+                                        //
+                                        // OTHER FORMS (Regional, Special, etc.):
+                                        // - Icon: ✨ auto_awesome (sparkles/star symbol)
+                                        // - Color: Blue (indicates variant/alternative)
+                                        //
+                                        Icon(
+                                          form['isMega'] == true
+                                              ? Icons.electric_bolt  // Mega evolutions
+                                              : Icons.auto_awesome,  // Other forms
+                                          size: 20,
+                                          color: form['isMega'] == true
+                                              ? Colors.purple  // Mega = purple
+                                              : Colors.blue,   // Other = blue
+                                        ),
+                                        const SizedBox(width: 10),
+                                        // ========================================================
+                                        // FORM NAME - Human-readable form name
+                                        // ========================================================
+                                        //
+                                        // Displays the form name extracted by fetchPokemonForms()
+                                        // Examples: "Normal", "Alola Form", "Mega X", "Galar Form"
+                                        //
+                                        // Expanded widget ensures text takes available space
+                                        // TextOverflow.ellipsis adds "..." if name is too long
+                                        //
+                                        Expanded(
+                                          child: Text(
+                                            form['formName'] as String,
+                                            overflow: TextOverflow.ellipsis,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  );
+                                }).toList(),
+                                // ========================================================
+                                // ON CHANGED - Form selection handler
+                                // ========================================================
+                                //
+                                // WHEN THIS FIRES:
+                                // User taps the dropdown and selects a different form
+                                //
+                                // PARAMETERS:
+                                // @param newFormId - The Pokemon ID of the selected form
+                                //                    (comes from DropdownMenuItem.value)
+                                //
+                                // WHAT IT DOES:
+                                // 1. Validates the selection (not null, different from current)
+                                // 2. Updates _selectedFormId to the new form's Pokemon ID
+                                // 3. Resets _isShiny to false (prevents showing wrong shiny sprite)
+                                // 4. Triggers rebuild via setState()
+                                //
+                                // REBUILD CHAIN:
+                                // setState() → build() → FutureBuilder.future updates
+                                // → fetchPokemon(_selectedFormId, client) called
+                                // → New Pokemon data loaded for selected form
+                                // → Entire page updates with new data
+                                //
+                                // EXAMPLE FLOW (Raichu):
+                                // 1. User has Normal Raichu displayed (id=26)
+                                // 2. User opens dropdown, sees: Normal, Alola Form
+                                // 3. User taps "Alola Form"
+                                // 4. onChanged fires with newFormId = 10100
+                                // 5. Check: 10100 != null? YES, 10100 != 26? YES
+                                // 6. setState: _selectedFormId = 10100, _isShiny = false
+                                // 7. Widget rebuilds
+                                // 8. FutureBuilder future = fetchPokemon(10100, client)
+                                // 9. Alola Raichu data loads (Electric/Psychic type)
+                                // 10. Page displays Alola Raichu image, stats, types
+                                //
+                                // WHY RESET SHINY?
+                                // When switching forms, we want to show the normal sprite first.
+                                // Otherwise, if user had shiny Normal Raichu, switching to Alola
+                                // would try to show shiny Alola sprite immediately, which might
+                                // not exist or load incorrectly. Better UX to reset to normal.
+                                //
+                                onChanged: (int? newFormId) {
+                                  // Validate: form ID must be non-null and different from current
+                                  if (newFormId != null && newFormId != _selectedFormId) {
+                                    setState(() {
+                                      _selectedFormId = newFormId;  // Update selected form
+                                      _isShiny = false;              // Reset shiny toggle
+                                    });
+                                  }
+                                },
+                              ),
+                            ),
+                          ),
+                        ],
 
                         // POKÉDEX ENTRY AND REGION
                         // This section displays the Pokédex entry description and region information
