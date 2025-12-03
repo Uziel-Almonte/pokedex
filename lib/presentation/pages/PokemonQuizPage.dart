@@ -46,6 +46,8 @@ import 'dart:math';
 import '../../data/queries.dart';
 // Import GraphQL service singleton to access the configured GraphQL client
 import '../../data/graphql.dart';
+// Import language service for multilingual support (Spanish/English)
+import '../services/language_service.dart';
 
 /// PokemonQuizPage is a StatefulWidget that implements the "Who's That Pokémon?" quiz game
 /// This is the main quiz page where users guess Pokémon based on their silhouette
@@ -222,13 +224,16 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
   /// - Rank title in retro font
   /// - "Continue" button to dismiss and keep playing
   void _checkForMilestone() {
+    // Get translations for current language
+    final translations = LanguageService.instance.translations;
+
     // Define all achievement milestones in ascending order
     final milestones = [
-      {'points': 500, 'title': 'Pokémon Trainer', 'emoji': '🎓'},
-      {'points': 1000, 'title': 'Gym Leader', 'emoji': '🏆'},
-      {'points': 2000, 'title': 'Elite Four Member', 'emoji': '👑'},
-      {'points': 3500, 'title': 'Champion', 'emoji': '🌟'},
-      {'points': 5000, 'title': 'Legend', 'emoji': '⭐✨'},
+      {'points': 500, 'title': translations.pokemonTrainer, 'emoji': '🎓'},
+      {'points': 1000, 'title': translations.gymLeader, 'emoji': '🏆'},
+      {'points': 2000, 'title': translations.eliteFourMember, 'emoji': '👑'},
+      {'points': 3500, 'title': translations.champion, 'emoji': '🌟'},
+      {'points': 5000, 'title': translations.legend, 'emoji': '⭐✨'},
     ];
 
     // Loop through each milestone to check if player just reached it
@@ -265,7 +270,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                 children: [
                   // "CONGRATULATIONS!" header text
                   Text(
-                    'CONGRATULATIONS!',
+                    translations.congratulations,
                     style: GoogleFonts.pressStart2p(
                       fontSize: 16,
                       color: Colors.yellow,
@@ -282,7 +287,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                   const SizedBox(height: 16),
                   // "You are now a..." text
                   Text(
-                    'You are now a',
+                    translations.youAreNowA,
                     style: GoogleFonts.pressStart2p(
                       fontSize: 10,
                       color: Colors.white,
@@ -313,7 +318,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                       ),
                     ),
                     child: Text(
-                      'Continue',
+                      translations.continueButton,
                       style: GoogleFonts.pressStart2p(fontSize: 10),
                     ),
                   ),
@@ -393,10 +398,13 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
   /// - Empty input: Show "Please enter a guess!" message
   /// - Missing data: Use empty string as fallback (null coalescing)
   void _checkGuess() {
+    // Get translations for current language
+    final translations = LanguageService.instance.translations;
+
     // Validate that the user entered something
     if (_guessController.text.trim().isEmpty) {
       setState(() {
-        _feedbackMessage = 'Please enter a guess!';
+        _feedbackMessage = translations.pleaseEnterGuess;
       });
       return; // Exit early if input is empty
     }
@@ -417,7 +425,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
         _isRevealed = true; // Reveal the Pokémon (remove silhouette effect)
         _score++; // Increment the score (legacy)
         _points += 100; // Award 100 points for correct guess
-        _feedbackMessage = 'Correct! It\'s ${_currentPokemon?.name}! +100 points'; // Show success message with points
+        _feedbackMessage = '${translations.correctPrefix} ${_currentPokemon?.name}! ${translations.correctSuffix}'; // Show success message with points
 
         // Check if this achievement unlocked a new milestone rank
         _checkForMilestone();
@@ -427,10 +435,10 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
 
         // Check if player ran out of lives (game over condition)
         if (_lives <= 0) {
-          _feedbackMessage = 'Game Over! No lives left. Final Score: $_points points';
+          _feedbackMessage = '${translations.gameOverNoLives}: $_points ${translations.points}';
         } else {
           // Player still has lives, can try again
-          _feedbackMessage = 'Wrong! Try again or reveal. Lives left: $_lives';
+          _feedbackMessage = '${translations.wrongTryAgain} ${translations.livesLeft}: $_lives';
         }
       }
     });
@@ -450,10 +458,13 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
   /// - Allows progression without penalty (except no points)
   /// - Good for learning unfamiliar Pokémon
   void _revealPokemon() {
+    // Get translations for current language
+    final translations = LanguageService.instance.translations;
+
     setState(() {
       _isRevealed = true; // Remove silhouette and show full-color image
       _attempts++; // Count this as an attempt (legacy)
-      _feedbackMessage = 'The Pokémon is ${_currentPokemon?.name}! No points awarded.'; // Show the answer with no points message
+      _feedbackMessage = '${translations.thePokemonIs} ${_currentPokemon?.name}! ${translations.noPointsAwarded}'; // Show the answer with no points message
     });
   }
 
@@ -481,15 +492,19 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
 
   @override
   Widget build(BuildContext context) {
+    // Get translations for current language
+    final translations = LanguageService.instance.translations;
+    final currentLang = LanguageService.instance.currentLanguage;
+
     return Scaffold(
       // AppBar with Pokémon-themed styling
       appBar: AppBar(
         backgroundColor: Colors.red, // Classic Pokémon red color
         centerTitle: true, // Center the title text
         title: Text(
-          'Who\'s That Pokémon?', // Quiz title referencing the classic TV show segment
+          translations.appTitle, // Quiz title referencing the classic TV show segment
           style: GoogleFonts.pressStart2p( // Retro 8-bit font for nostalgic feel
-            fontSize: 16,
+            fontSize: 14,
             color: Colors.yellow, // Yellow text on red background (Pokémon branding)
             fontWeight: FontWeight.bold,
             shadows: [
@@ -502,6 +517,33 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
             ],
           ),
         ),
+        actions: [
+          // Language toggle button
+          IconButton(
+            icon: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.yellow,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue, width: 2),
+              ),
+              child: Text(
+                currentLang.toUpperCase(),
+                style: GoogleFonts.pressStart2p(
+                  fontSize: 10,
+                  color: Colors.red,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+            ),
+            onPressed: () {
+              setState(() {
+                LanguageService.instance.toggleLanguage();
+              });
+            },
+            tooltip: currentLang == 'en' ? 'Cambiar a Español' : 'Switch to English',
+          ),
+        ],
       ),
       body: _isLoading
           // Show loading spinner while fetching Pokémon data
@@ -543,7 +585,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                                 const Icon(Icons.stars, color: Colors.amber, size: 32),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Points',
+                                  translations.points,
                                   style: GoogleFonts.pressStart2p(
                                     fontSize: 10,
                                     color: Colors.red.shade900,
@@ -574,7 +616,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  'Lives',
+                                  translations.lives,
                                   style: GoogleFonts.pressStart2p(
                                     fontSize: 10,
                                     color: Colors.red.shade900,
@@ -596,12 +638,12 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                         const Divider(color: Colors.red),
                         const SizedBox(height: 8),
                         // Bottom row: Score and Attempts (secondary stats)
-                        Row(
+                          Row(
                           mainAxisAlignment: MainAxisAlignment.spaceAround, // Space items evenly
                           children: [
                             // Score text (number of correct guesses)
                             Text(
-                              'Score: $_score',
+                              '${translations.score}: $_score',
                               style: GoogleFonts.pressStart2p(
                                 fontSize: 10,
                                 color: Colors.red.shade900,
@@ -609,7 +651,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                             ),
                             // Attempts text (total guesses + reveals)
                             Text(
-                              'Attempts: $_attempts',
+                              '${translations.attempts}: $_attempts',
                               style: GoogleFonts.pressStart2p(
                                 fontSize: 10,
                                 color: Colors.red.shade900,
@@ -647,7 +689,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                       child: Column(
                         children: [
                           Text(
-                            'GAME OVER',
+                            translations.gameOver,
                             style: GoogleFonts.pressStart2p(
                               fontSize: 24,
                               color: Colors.red.shade900,
@@ -659,7 +701,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                           const Icon(Icons.cancel, size: 64, color: Colors.red),
                           const SizedBox(height: 16),
                           Text(
-                            'Final Score',
+                            translations.finalScore,
                             style: GoogleFonts.pressStart2p(
                               fontSize: 12,
                               color: Colors.red.shade900,
@@ -667,7 +709,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            '$_points Points',
+                            '$_points ${translations.points}',
                             style: GoogleFonts.pressStart2p(
                               fontSize: 20,
                               color: Colors.amber.shade900,
@@ -676,7 +718,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                           ),
                           const SizedBox(height: 8),
                           Text(
-                            'Correct: $_score',
+                            '${translations.correct}: $_score',
                             style: GoogleFonts.pressStart2p(
                               fontSize: 10,
                               color: Colors.red.shade900,
@@ -686,7 +728,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                           ElevatedButton.icon(
                             onPressed: _restartGame,
                             icon: const Icon(Icons.refresh),
-                            label: const Text('Restart Game'),
+                            label: Text(translations.restartGame),
                             style: ElevatedButton.styleFrom(
                               backgroundColor: Colors.green,
                               foregroundColor: Colors.white,
@@ -784,7 +826,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                         TextField(
                           controller: _guessController, // Controller to read/manage the text
                           decoration: InputDecoration(
-                            hintText: 'Enter Pokémon name...', // Placeholder text
+                            hintText: translations.enterPokemonName, // Placeholder text
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12), // Rounded corners
                               borderSide: const BorderSide(color: Colors.red, width: 2), // Red border
@@ -807,7 +849,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                             ElevatedButton.icon(
                               onPressed: _checkGuess, // Call checkGuess when pressed
                               icon: const Icon(Icons.check), // Checkmark icon
-                              label: const Text('Guess'),
+                              label: Text(translations.guessButton),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.green, // Green for "submit/confirm" action
                                 foregroundColor: Colors.white, // White text and icon
@@ -821,7 +863,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                             ElevatedButton.icon(
                               onPressed: _revealPokemon, // Call revealPokemon when pressed
                               icon: const Icon(Icons.visibility), // Eye icon (visibility)
-                              label: const Text('Reveal'),
+                              label: Text(translations.revealButton),
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.orange, // Orange for "secondary/skip" action
                                 foregroundColor: Colors.white,
@@ -872,7 +914,7 @@ class _PokemonQuizPageState extends State<PokemonQuizPage> {
                         ElevatedButton.icon(
                           onPressed: _nextPokemon, // Call nextPokemon to load new question
                           icon: const Icon(Icons.skip_next), // Skip/next icon
-                          label: const Text('Next Pokémon'),
+                          label: Text(translations.nextPokemon),
                           style: ElevatedButton.styleFrom(
                             backgroundColor: Colors.blue, // Blue for "continue/next" action
                             foregroundColor: Colors.white,
